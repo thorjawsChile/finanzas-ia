@@ -1,21 +1,27 @@
 /**
  * api/data.js — Vercel Serverless Function
- * Saves and loads user data using Vercel KV (Redis).
+ * Saves and loads user data using Upstash Redis.
  *
  * GET  /api/data?key=periods   → load data for authenticated user
  * POST /api/data               → { key, value } save data for authenticated user
  */
 
 import crypto from "crypto";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 
-// ── Session validation (same as chat.js) ─────────────────────────────────────
+// ── Upstash Redis client ──────────────────────────────────────────────────────
+const redis = new Redis({
+  url:   process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
+// ── Session validation ────────────────────────────────────────────────────────
 function getUsername(req) {
   const token  = req.headers["x-session-token"];
   const secret = process.env.SESSION_SECRET;
   if (!token || !secret) return null;
   try {
-    const decoded        = Buffer.from(token, "base64").toString("utf8");
+    const decoded          = Buffer.from(token, "base64").toString("utf8");
     const [user, ts, hmac] = decoded.split(":");
     if (!user || !ts || !hmac) return null;
     if (Date.now() - parseInt(ts, 10) > 8 * 60 * 60 * 1000) return null;
@@ -25,9 +31,8 @@ function getUsername(req) {
   } catch { return null; }
 }
 
-// Allowed data keys per user
 const ALLOWED_KEYS = ["periods", "salaries"];
-const MAX_SIZE_KB  = 512; // 512KB per key
+const MAX_SIZE_KB  = 512;
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -40,12 +45,11 @@ export default async function handler(req, res) {
     const key = req.query.key;
     if (!ALLOWED_KEYS.includes(key))
       return res.status(400).json({ error: "Clave no permitida." });
-
     try {
-      const value = await kv.get(`user:${username}:${key}`);
+      const value = await redis.get(`user:${username}:${key}`);
       return res.status(200).json({ value: value || null });
     } catch (err) {
-      return res.status(500).json({ error: "Error al leer datos: " + err.message });
+      return res.status(500).json({ error: "Error al leer: " + err.message });
     }
   }
 
@@ -54,13 +58,11 @@ export default async function handler(req, res) {
     const { key, value } = req.body || {};
     if (!ALLOWED_KEYS.includes(key))
       return res.status(400).json({ error: "Clave no permitida." });
-
     const sizeKB = JSON.stringify(value).length / 1024;
     if (sizeKB > MAX_SIZE_KB)
-      return res.status(413).json({ error: `Datos demasiado grandes (${sizeKB.toFixed(0)}KB > ${MAX_SIZE_KB}KB).` });
-
+      return res.status(413).json({ error: `Datos muy grandes (${sizeKB.toFixed(0)}KB).` });
     try {
-      await kv.set(`user:${username}:${key}`, value);
+      await redis.set(`user:${username}:${key}`, value);
       return res.status(200).json({ ok: true });
     } catch (err) {
       return res.status(500).json({ error: "Error al guardar: " + err.message });
