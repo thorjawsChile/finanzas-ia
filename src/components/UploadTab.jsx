@@ -35,7 +35,7 @@ export function UploadTab({ salaries, onAnalysis, rawText, setRawText }) {
     try {
       setProgress("Analizando con IA…");
       const result = await analyzeExpensesAI(rawText, salaries);
-      onAnalysis(result, fileName || "Estado de cuenta");
+      onAnalysis(result);
     } catch (e) { setError("Error al analizar: " + e.message); }
     finally { setLoading(false); setProgress(""); }
   };

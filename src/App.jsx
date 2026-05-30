@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { loadSession, clearSession, savePeriods, saveSalaries } from "./security.js";
-import { DEMO_MODE } from "./constants.js";
+import { DEMO_MODE, MONTHS_ES } from "./constants.js";
 import LoginScreen from "./components/LoginScreen.jsx";
 import ExportPDFButton from "./components/ExportPDFButton.jsx";
 import UploadTab from "./tabs/UploadTab.jsx";
@@ -172,12 +172,23 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [budget, session?.token]);
 
-  const handleAnalysis = (result, fileName) => {
+  const handleAnalysis = (result) => {
     setAnalysis(result);
-    const label = fileName
-      ? fileName.replace(/\.pdf$/i,"").replace(/[-_]/g," ")
-      : `Período ${periods.length + 1}`;
-    setPeriods(prev => [...prev, { label, analysis: result, addedAt: Date.now() }]);
+    setPeriods(prev => {
+      const pmMatch = result?.periodoMes
+        ? String(result.periodoMes).match(/^(\d{1,2})\/(\d{4})$/)
+        : null;
+      const banco = result?.banco?.trim();
+      let label;
+      if (banco && pmMatch) {
+        label = `${banco} ${MONTHS_ES[parseInt(pmMatch[1], 10) - 1]} ${pmMatch[2]}`;
+      } else if (pmMatch) {
+        label = `${MONTHS_ES[parseInt(pmMatch[1], 10) - 1]} ${pmMatch[2]}`;
+      } else {
+        label = `Período ${prev.length + 1}`;
+      }
+      return [...prev, { label, analysis: result, addedAt: Date.now() }];
+    });
     setTab("analysis");
   };
   const handleRemovePeriod = (idx) => setPeriods(prev => prev.filter((_,i) => i !== idx));
