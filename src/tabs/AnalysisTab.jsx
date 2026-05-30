@@ -17,11 +17,17 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
   const { expenses=[], totalExpenses=0, summary="", topCategories=[], recommendations=[], salaryRatio } = analysis;
   const [showBudget, setShowBudget] = useState(false);
   const [editBudget, setEditBudget] = useState({});
+  const [filtroCategoria, setFiltroCategoria] = useState("Todas");
+  const [busqueda, setBusqueda] = useState("");
 
   const catMap = {};
   expenses.forEach((e) => { catMap[e.category] = (catMap[e.category]||0) + e.amount; });
   const pieData = Object.entries(catMap).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   const avgExpense = expenses.length > 0 ? totalExpenses / expenses.length : 0;
+  const categorias = ["Todas", ...Array.from(new Set(expenses.map(e => e.category))).sort()];
+  const expensesFiltradas = expenses
+    .filter(e => filtroCategoria === "Todas" || e.category === filtroCategoria)
+    .filter(e => e.desc.toLowerCase().includes(busqueda.toLowerCase()));
 
   const saveBudget = () => {
     const parsed = {};
@@ -179,9 +185,29 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
         </div>
       </Card>
       <Card>
-        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">Detalle ({expenses.length})</h3>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <h3 className="text-slate-300 text-sm font-semibold uppercase tracking-wide">
+            Detalle ({expensesFiltradas.length})
+          </h3>
+          <div className="flex gap-2 flex-wrap">
+            <input
+              type="text"
+              placeholder="Buscar..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              className="bg-slate-800 text-slate-300 text-xs rounded-lg px-3 py-1.5 border border-slate-700 focus:outline-none focus:border-purple-500 w-36"
+            />
+            <select
+              value={filtroCategoria}
+              onChange={e => setFiltroCategoria(e.target.value)}
+              className="bg-slate-800 text-slate-300 text-xs rounded-lg px-3 py-1.5 border border-slate-700 focus:outline-none focus:border-purple-500"
+            >
+              {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
         <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
-          {expenses.slice().sort((a,b)=>b.amount-a.amount).map((e,i)=>(
+          {expensesFiltradas.slice().sort((a,b)=>b.amount-a.amount).map((e,i)=>(
             <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{background:CAT_COLORS[e.category]||"#94a3b8"}}/>
