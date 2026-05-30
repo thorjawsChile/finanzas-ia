@@ -231,10 +231,11 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false}/>
-                <YAxis tickFormatter={v=>"$"+(v/1000000).toFixed(1)+"M"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
+                <YAxis domain={[0,'auto']} tickFormatter={v=>v>=1000000?"$"+(v/1000000).toFixed(1)+"M":"$"+(v/1000).toFixed(0)+"k"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
                 <Tooltip content={<CustomTooltip/>} cursor={false}/>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)"/>
-                <Bar dataKey="total" name="Total" radius={6} maxBarSize={48} fill="url(#barGradPeriod)"/>
+                <Bar dataKey="total" name="Total" radius={6} maxBarSize={48} fill="url(#barGradPeriod)"
+                  label={{position:"top",fill:"#94a3b8",fontSize:10,formatter:v=>v>=1000000?"$"+(v/1000000).toFixed(1)+"M":"$"+(v/1000).toFixed(0)+"k"}}/>
               </BarChart>
             </ResponsiveContainer>
           </Card>
