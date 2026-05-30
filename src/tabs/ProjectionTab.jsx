@@ -183,7 +183,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
         </div>
 
         <button onClick={handleProject} disabled={!houseMonthly || loading}
-          className={`mt-4 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 ${(!houseMonthly||loading)?"bg-slate-700 text-slate-500 cursor-not-allowed":"btn-glow"}`}
+          className={`mt-4 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 ${(!houseMonthly||loading)?"bg-slate-700 text-slate-500 cursor-not-allowed":"btn-glow"}`}>
           {loading ? <><span className="animate-spin inline-block">⟳</span> Analizando con IA…</> : <>🔮 Proyectar viabilidad</>}
         </button>
         {error && <p className="mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/40 rounded-lg px-4 py-2">{error}</p>}
