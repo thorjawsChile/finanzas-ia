@@ -115,8 +115,9 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
         <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Distribución por Categoría</h3>
         <div style={{width:"100%",height:220}}>
           <ResponsiveContainer width="100%" height={220}>
-            <PieChart width={220} height={220}>
-              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={82} innerRadius={44} paddingAngle={2}
+            <PieChart width={220} height={220} margin={{top:0,right:0,bottom:0,left:0}}>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={82} innerRadius={44}
+                paddingAngle={0} startAngle={90} endAngle={-270}
                 label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}
                 strokeWidth={0}>
                 {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
