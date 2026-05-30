@@ -60,7 +60,7 @@ export default function AhorrosTab({ ahorros, setAhorros }) {
           <div className="flex flex-wrap gap-2">
             {emojiOpts.map(e=>(
               <button key={e} onClick={()=>setEmoji(e)}
-                className={`w-9 h-9 rounded-xl text-lg transition-all ${emoji===e?"bg-violet-600":"bg-slate-800 hover:bg-slate-700"}`}>
+                className={`w-9 h-9 rounded-xl text-lg transition-all ${emoji===e?"bg-violet-600 shadow-lg":"bg-slate-700 hover:bg-slate-600"}`}>
                 {e}
               </button>
             ))}

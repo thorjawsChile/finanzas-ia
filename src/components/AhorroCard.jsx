@@ -29,16 +29,16 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-        <div className="bg-slate-800/60 rounded-xl p-2">
-          <p className="text-xs text-slate-500 mb-0.5">Ahorrado</p>
+        <div className="rounded-xl p-2" style={{background:"rgba(6,182,212,0.1)",border:"1px solid rgba(6,182,212,0.2)"}}>
+          <p className="text-xs text-slate-400 mb-0.5">Ahorrado</p>
           <p className="text-sm font-mono font-bold text-cyan-400">{fmt(a.actual)}</p>
         </div>
-        <div className="bg-slate-800/60 rounded-xl p-2">
-          <p className="text-xs text-slate-500 mb-0.5">Objetivo</p>
-          <p className="text-sm font-mono font-bold text-slate-200">{fmt(a.objetivo)}</p>
+        <div className="rounded-xl p-2" style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
+          <p className="text-xs text-slate-400 mb-0.5">Objetivo</p>
+          <p className="text-sm font-mono font-bold text-slate-100">{fmt(a.objetivo)}</p>
         </div>
-        <div className="bg-slate-800/60 rounded-xl p-2">
-          <p className="text-xs text-slate-500 mb-0.5">Faltan</p>
+        <div className="rounded-xl p-2" style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)"}}>
+          <p className="text-xs text-slate-400 mb-0.5">Faltan</p>
           <p className="text-sm font-mono font-bold text-amber-400">{fmt(falta)}</p>
         </div>
       </div>
@@ -70,12 +70,12 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
         const pctMeta     = hasMeta ? Math.round((mesesMeta / totalSpan) * 100) : 100;
 
         return (
-          <div className="mb-3 p-3 bg-slate-800/40 rounded-xl border border-slate-700/40">
-            <p className="text-xs text-slate-500 mb-2 uppercase tracking-widest">Proyección</p>
+          <div className="mb-3 p-3 rounded-xl" style={{background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.25)"}}>
+            <p className="text-xs text-violet-400 mb-2 uppercase tracking-widest font-medium">Proyección</p>
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="text-xs text-slate-400">Fecha estimada</p>
-                <p className="text-sm font-medium text-slate-200">
+                <p className="text-sm font-semibold text-white">
                   {estimada.toLocaleDateString("es-CL", { month: "short", year: "numeric" })}
                 </p>
               </div>
@@ -106,7 +106,7 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
                   title={`Meta: ${metaDate.toLocaleDateString("es-CL")}`}/>
               )}
             </div>
-            <div className="flex justify-between text-xs text-slate-600 mt-1.5">
+            <div className="flex justify-between text-xs text-slate-400 mt-1.5">
               <span>Hoy</span>
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-400 inline-block"/>Estimado</span>
@@ -114,8 +114,8 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
               </div>
             </div>
             {a.aporte > 0 && (
-              <p className="text-xs text-slate-600 mt-1.5">
-                Aportando <span className="text-slate-400">{fmt(a.aporte)}/mes</span> · Faltan <span className="text-slate-400">{fmt(falta)}</span>
+              <p className="text-xs text-slate-400 mt-1.5">
+                Aportando <span className="text-cyan-400 font-medium">{fmt(a.aporte)}/mes</span> · Faltan <span className="text-slate-300">{fmt(falta)}</span>
               </p>
             )}
           </div>
@@ -135,7 +135,10 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
           </div>
         ) : (
           <button onClick={() => setAbonando(true)}
-            className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs text-slate-400 hover:text-slate-200 transition-all">
+            className="w-full py-2 rounded-xl text-xs font-medium transition-all"
+            style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)",color:"#c4b5fd"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="rgba(124,58,237,0.22)";e.currentTarget.style.color="#ede9fe";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="rgba(124,58,237,0.12)";e.currentTarget.style.color="#c4b5fd";}}>
             + Registrar abono
           </button>
         )
