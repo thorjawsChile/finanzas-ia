@@ -162,11 +162,11 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                   <Tooltip content={<CustomTooltip/>}/>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-3">
                 {pieData.map((e,i)=>(
-                  <div key={i} className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{background:CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}}/>
-                    {e.name}
+                  <div key={i} className="flex items-center gap-1.5 text-xs font-medium">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:CAT_COLORS[e.name]||PALETTE[i%PALETTE.length], boxShadow:`0 0 6px ${CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}80`}}/>
+                    <span className="text-slate-400">{e.name}</span>
                   </div>
                 ))}
               </div>
@@ -174,14 +174,18 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
 
             <Card>
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Top categorías acumuladas</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={pieData.slice(0,6)} layout="vertical" margin={{left:10,right:10}}>
+              <ResponsiveContainer width="100%" height={Math.max(220, pieData.slice(0,6).length * 38)}>
+                <BarChart data={pieData.slice(0,6)} layout="vertical" margin={{left:10,right:16}}>
+                  <defs>
+                    <linearGradient id="barGradVC2" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#7c3aed"/>
+                      <stop offset="100%" stopColor="#06b6d4"/>
+                    </linearGradient>
+                  </defs>
                   <XAxis type="number" tickFormatter={v=>"$"+(v/1000).toFixed(0)+"k"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/>
                   <YAxis type="category" dataKey="name" width={100} tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false}/>
-                  <Tooltip content={<CustomTooltip/>}/>
-                  <Bar dataKey="value" radius={4} maxBarSize={18}>
-                    {pieData.slice(0,6).map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
-                  </Bar>
+                  <Tooltip content={<CustomTooltip/>} cursor={{fill:"rgba(124,58,237,0.07)"}}/>
+                  <Bar dataKey="value" radius={6} maxBarSize={26} fill="url(#barGradVC2)"/>
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -216,14 +220,18 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
           <Card>
             <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Total por período</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={compareData} margin={{left:10,right:10}}>
+              <BarChart data={compareData} margin={{left:10,right:16}}>
+                <defs>
+                  <linearGradient id="barGradPeriod" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7c3aed"/>
+                    <stop offset="100%" stopColor="#06b6d4"/>
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false}/>
                 <YAxis tickFormatter={v=>"$"+(v/1000000).toFixed(1)+"M"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
-                <Tooltip content={<CustomTooltip/>}/>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
-                <Bar dataKey="total" name="Total" radius={6} maxBarSize={40}>
-                  {compareData.map((_,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]}/>)}
-                </Bar>
+                <Tooltip content={<CustomTooltip/>} cursor={{fill:"rgba(124,58,237,0.07)"}}/>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)"/>
+                <Bar dataKey="total" name="Total" radius={6} maxBarSize={48} fill="url(#barGradPeriod)"/>
               </BarChart>
             </ResponsiveContainer>
           </Card>

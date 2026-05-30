@@ -136,19 +136,19 @@ export const DEMO_PROJECTION_RESULT = {
 
 /* ── palette & helpers ─────────────────────────────────────────────────── */
 export const CAT_COLORS = {
-  "Alimentación":    "#f472b6",
-  "Transporte":      "#fb923c",
-  "Entretenimiento": "#a78bfa",
-  "Salud":           "#34d399",
-  "Ropa/Calzado":    "#f9a8d4",
-  "Hogar":           "#60a5fa",
-  "Tecnología":      "#22d3ee",
-  "Viajes":          "#fbbf24",
-  "Servicios":       "#818cf8",
-  "Educación":       "#4ade80",
-  "Otros":           "#94a3b8",
+  "Alimentación":    "#7c3aed",
+  "Transporte":      "#06b6d4",
+  "Entretenimiento": "#f59e0b",
+  "Salud":           "#10b981",
+  "Ropa/Calzado":    "#a78bfa",
+  "Hogar":           "#22d3ee",
+  "Tecnología":      "#fbbf24",
+  "Viajes":          "#34d399",
+  "Servicios":       "#8b5cf6",
+  "Educación":       "#0891b2",
+  "Otros":           "#64748b",
 };
-export const PALETTE = Object.values(CAT_COLORS);
+export const PALETTE = ["#7c3aed","#06b6d4","#f59e0b","#10b981","#a78bfa","#22d3ee","#fbbf24","#34d399","#8b5cf6","#0891b2","#64748b"];
 export const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 export const fmt = (n) => isNaN(n) ? "$0" : "$" + Math.round(Number(n)).toLocaleString("es-CL");
 

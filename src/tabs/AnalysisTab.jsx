@@ -115,18 +115,19 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
         <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Distribución por Categoría</h3>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={42} paddingAngle={2}
-              label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}>
+            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={82} innerRadius={44} paddingAngle={3}
+              label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}
+              strokeWidth={0}>
               {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
             </Pie>
             <Tooltip content={<CustomTooltip/>}/>
           </PieChart>
         </ResponsiveContainer>
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div className="flex flex-wrap gap-2 mt-3">
           {pieData.map((e,i)=>(
-            <div key={i} className="flex items-center gap-1.5 text-xs text-slate-400">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}}/>
-              {e.name}
+            <div key={i} className="flex items-center gap-1.5 text-xs font-medium" style={{color: CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}}>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:CAT_COLORS[e.name]||PALETTE[i%PALETTE.length], boxShadow:`0 0 6px ${CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}80`}}/>
+              <span className="text-slate-400">{e.name}</span>
             </div>
           ))}
         </div>
@@ -134,14 +135,18 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
       {topCategories.length > 0 && (
         <Card>
           <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Top Categorías</h3>
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={topCategories} layout="vertical" margin={{left:10,right:10}}>
+          <ResponsiveContainer width="100%" height={Math.max(180, topCategories.length * 38)}>
+            <BarChart data={topCategories} layout="vertical" margin={{left:10,right:16}}>
+              <defs>
+                <linearGradient id="barGradVC" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#7c3aed"/>
+                  <stop offset="100%" stopColor="#06b6d4"/>
+                </linearGradient>
+              </defs>
               <XAxis type="number" tickFormatter={(v)=>"$"+(v/1000).toFixed(0)+"k"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/>
-              <YAxis type="category" dataKey="name" width={95} tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false}/>
-              <Tooltip content={<CustomTooltip/>}/>
-              <Bar dataKey="total" radius={5} maxBarSize={18}>
-                {topCategories.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
-              </Bar>
+              <YAxis type="category" dataKey="name" width={100} tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false}/>
+              <Tooltip content={<CustomTooltip/>} cursor={{fill:"rgba(124,58,237,0.07)"}}/>
+              <Bar dataKey="total" radius={6} maxBarSize={26} fill="url(#barGradVC)"/>
             </BarChart>
           </ResponsiveContainer>
         </Card>

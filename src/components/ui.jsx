@@ -31,11 +31,15 @@ export function KpiCard({ label, value, sub, accent = "emerald" }) {
 export const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl px-4 py-2 shadow-xl" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.25)"}}>
-      {label && <p className="text-xs text-slate-400 mb-1">{label}</p>}
+    <div className="rounded-xl px-4 py-3 shadow-2xl" style={{
+      background:"#0d0d1f",
+      border:"1px solid rgba(124,58,237,0.55)",
+      boxShadow:"0 8px 32px rgba(0,0,0,0.7), 0 0 20px rgba(124,58,237,0.15)"
+    }}>
+      {label && <p className="text-xs text-slate-400 mb-2 pb-1.5 font-medium" style={{borderBottom:"1px solid rgba(124,58,237,0.2)"}}>{label}</p>}
       {payload.map((p, i) => (
-        <p key={i} className="text-sm font-mono" style={{ color: p.color || "#34d399" }}>
-          {p.name ? `${p.name}: ` : ""}{fmt(p.value)}
+        <p key={i} className="text-sm font-mono font-semibold" style={{ color: p.color || "#a78bfa" }}>
+          {p.name ? <span className="font-normal text-slate-400 mr-1">{p.name}:</span> : ""}{fmt(p.value)}
         </p>
       ))}
     </div>
