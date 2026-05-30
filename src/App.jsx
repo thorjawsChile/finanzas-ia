@@ -48,6 +48,8 @@ const DEMO_EXPENSES_RESULT = {
     "Las compras en Ripley y Falabella suman $109.800 en el período. Establecer un presupuesto fijo mensual para ropa de $40.000 liberaría casi $70.000.",
   ],
   salaryRatio: "52.6%",
+  banco: "Santander",
+  periodoMes: "05/2025",
 };
 
 const DEMO_PAYSLIP_RESULT = {
@@ -163,6 +165,14 @@ const PALETTE = Object.values(CAT_COLORS);
 const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const fmt = (n) => isNaN(n) ? "$0" : "$" + Math.round(Number(n)).toLocaleString("es-CL");
 
+// Normalize periodoMes to "MM/YYYY" — accepts "M/YYYY" or "MM/YYYY"
+function normalizePM(pm) {
+  if (!pm) return null;
+  const m = String(pm).match(/^(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  return m[1].padStart(2, "0") + "/" + m[2];
+}
+
 /* ── PDF text extraction via pdf.js ──────────────────────────────────── */
 async function extractPdfText(file) {
   if (!window.pdfjsLib) {
@@ -189,20 +199,55 @@ async function extractPdfText(file) {
 /* ── AI: analyze expenses ─────────────────────────────────────────────── */
 async function analyzeExpensesAI(rawText, salaries) {
   if (DEMO_MODE) { await demoDelay(); return DEMO_EXPENSES_RESULT; }
-  const salaryCtx = salaries.length > 0
-    ? `Sueldos registrados: ${salaries.map((s) => `${MONTHS_ES[s.month-1]} ${s.year}: ${fmt(s.amount)}`).join(", ")}.`
+  // Combine salaries by month before passing to AI (sum multiple entries for same month)
+  const salaryMonthMap = {};
+  salaries.forEach(s => {
+    const key = `${s.year}-${String(s.month).padStart(2,"0")}`;
+    if (!salaryMonthMap[key]) salaryMonthMap[key] = { month: s.month, year: s.year, total: 0 };
+    salaryMonthMap[key].total += s.amount;
+  });
+  const combinedSalaries = Object.values(salaryMonthMap).sort((a,b)=>`${a.year}${a.month}`.localeCompare(`${b.year}${b.month}`));
+  const salaryCtx = combinedSalaries.length > 0
+    ? `Sueldos líquidos registrados (combinados por mes): ${combinedSalaries.map(s => `${MONTHS_ES[s.month-1]} ${s.year}: ${fmt(s.total)}`).join(", ")}.`
     : "No hay sueldos registrados.";
 
-  const prompt = `Eres un experto en análisis de estados de cuenta de tarjeta de crédito Santander Chile. Tu tarea es extraer TODAS las transacciones y calcular el total correcto de gastos del período.
+  const prompt = `Eres un experto en análisis de estados de cuenta bancarios chilenos. Tu tarea es extraer TODAS las transacciones, identificar el banco emisor, el período facturado y calcular el total correcto de gastos.
 
 ${salaryCtx}
 
-Texto extraído del estado de cuenta Santander:
+Texto extraído del estado de cuenta:
 ---
 ${rawText.slice(0, 10000)}
 ---
 
-ESTRUCTURA DEL ESTADO DE CUENTA SANTANDER — debes entenderla bien:
+CAMPOS OBLIGATORIOS A IDENTIFICAR:
+
+A. banco: nombre del banco o institución emisora. Busca en el encabezado del documento:
+   - "Banco Santander", "SANTANDER" → banco: "Santander"
+   - "Banco de Chile", "BANCO DE CHILE" → banco: "Banco de Chile"
+   - "BancoEstado", "BANCO ESTADO" → banco: "BancoEstado"
+   - "Scotiabank", "SCOTIABANK" → banco: "Scotiabank"
+   - "Itaú", "ITAU" → banco: "Itaú"
+   - "Bci", "BCI" → banco: "Bci"
+   - "Falabella", "CMR" → banco: "Falabella"
+   - Si no reconoces el banco, usa el nombre que aparezca en el encabezado.
+
+B. periodoMes: CAMPO CRÍTICO — mes y año del período facturado, formato "MM/YYYY". NUNCA null.
+   Busca en este orden hasta encontrarlo:
+   1. Texto explícito de período/facturación:
+      - "Período de facturación: 01/03/2026 al 31/03/2026" → "03/2026" (mes de cierre)
+      - "PERÍODO FACTURADO 15/02/2026 - 14/03/2026" → "03/2026"
+      - "PERÍODO ACTUAL MARZO 2026" o "PERÍODO ACTUAL: MARZO 2026" → "03/2026"
+      - "Fecha de corte: 10/04/2026" → "04/2026"
+      - "Vence el 30/04/2026" / "PAGAR HASTA 30/04/2026" → "04/2026"
+      - "ESTADO DE CUENTA ABRIL 2026" → "04/2026"
+   2. Si no hay texto explícito, analiza las fechas de las transacciones del período actual:
+      - Encuentra el mes que aparece en la mayoría de las fechas de transacciones
+      - Ejemplo: si la mayoría tienen fechas "xx/03/26" o "xx/03/2026" → periodoMes: "03/2026"
+      - Usa el año completo: "26" → 2026, "25" → 2025
+   periodoMes SIEMPRE debe tener valor. Si hay cualquier fecha en el documento, puedes determinarlo.
+
+ESTRUCTURA DEL ESTADO DE CUENTA — debes entenderla bien:
 
 El documento tiene estas secciones:
 - "1.PERÍODO ANTERIOR": información del mes pasado — IGNORA COMPLETAMENTE estos montos
@@ -265,7 +310,7 @@ ${salaries.length > 0 ? "Incluye salaryRatio como % del sueldo promedio." : ""}
 IMPORTANTE: Sé conciso en desc (máx 30 chars), summary (máx 200 chars) y recommendations (máx 100 chars cada una). El JSON debe ser compacto.
 
 Responde SOLO con JSON válido sin markdown:
-{"expenses":[{"desc":"","amount":0,"category":""}],"totalExpenses":0,"summary":"","topCategories":[{"name":"","total":0}],"recommendations":["","",""],"salaryRatio":null}`;
+{"banco":"","periodoMes":"MM/YYYY","expenses":[{"desc":"","amount":0,"category":""}],"totalExpenses":0,"summary":"","topCategories":[{"name":"","total":0}],"recommendations":["","",""],"salaryRatio":null}`;
 
   const data = await secureAnthropicFetch({
     model: "claude-sonnet-4-5", max_tokens: 8000,
@@ -295,6 +340,7 @@ Responde SOLO con JSON válido sin markdown:
         const totalMatch = fixed.match(/"totalExpenses"\s*:\s*(\d+)/);
         const summaryMatch = fixed.match(/"summary"\s*:\s*"([^"]+)"/);
         return {
+          banco: null, periodoMes: null,
           expenses: expMatch ? JSON.parse(expMatch[1]) : [],
           totalExpenses: totalMatch ? parseInt(totalMatch[1]) : 0,
           summary: summaryMatch ? summaryMatch[1] : "Análisis parcial completado.",
@@ -310,27 +356,62 @@ Responde SOLO con JSON válido sin markdown:
 /* ── AI: parse payslip ────────────────────────────────────────────────── */
 async function parsePayslipAI(rawText) {
   if (DEMO_MODE) { await demoDelay(); return DEMO_PAYSLIP_RESULT; }
-  const prompt = `Eres un experto en liquidaciones de sueldo chilenas. Extrae toda la información de esta liquidación de sueldo.
+  const prompt = `Eres un experto en liquidaciones de sueldo del Hospital Clínico de Magallanes y del sector público chileno. Extrae con precisión absoluta todos los datos.
 
 Texto extraído:
 ---
 ${rawText.slice(0, 6000)}
 ---
 
-Extrae:
-1. Nombre del trabajador (workerName)
-2. Nombre empresa (companyName)
-3. Mes y año de la liquidación (month: 1-12, year: YYYY)
-4. Sueldo base (sueldoBase)
-5. Lista de haberes/ingresos: cada uno con nombre y monto (haberes: [{name, amount}])
-6. Lista de descuentos: cada uno con nombre y monto (descuentos: [{name, amount}])
-7. Total haberes (totalHaberes)
-8. Total descuentos (totalDescuentos)
-9. Sueldo líquido / alcance líquido (liquidoPagar) — el monto final que se paga al trabajador
-10. AFP si aparece (afp)
-11. Salud/Isapre si aparece (salud)
+FORMATO DEL DOCUMENTO:
 
-Solo JSON válido, sin markdown:
+Cada ítem (haber o descuento) tiene el formato: CÓDIGO(4 dígitos) NOMBRE monto
+  Haber:    "0001 SUELDO BASE 1.200.000"           → name: "SUELDO BASE",   amount: 1200000
+  Descuento:"0000 CAPITAL Pensión 10% 236.494"     → name: "Pensión 10%",   amount: 236494
+  (En descuentos, el nombre empieza DESPUÉS del identificador de institución como "CAPITAL", "FONASA", "AFC")
+
+REGLA 1 — MONTO CERO:
+  "0004 DESAHUCIO 0" → name: "DESAHUCIO", amount: 0
+  Si el único número al final es 0, amount es 0. No tomes monto de otra línea.
+
+REGLA 2 — ASTERISCO AL FINAL DE LÍNEA (tope legal):
+  "0342 GYM SPORTLIFE 39.900 *" → name: "GYM SPORTLIFE", amount: 39900
+  El * al final es solo una marca visual. El monto del ítem ES 39.900. Ignorar el asterisco.
+
+REGLA 3 — LÍNEAS QUE EMPIEZAN CON * O ** (IGNORAR COMPLETAMENTE):
+  "*Monto Tope 15% 437.035"  → IGNORAR. 437.035 NO es monto de ningún ítem.
+  "**Monto Tope 25% 728.391" → IGNORAR. 728.391 NO es monto de ningún ítem.
+  Estas líneas son referencias legales que aparecen después de ítems marcados con *. Nunca son descuentos.
+
+REGLA 4 — FILA DE TOTALES (exactamente 5 números en orden fijo):
+  Posición 1 → totalHaberes
+  Posición 2 → Total Imponible  (IGNORAR)
+  Posición 3 → Total Tributable (IGNORAR)
+  Posición 4 → totalDescuentos
+  Posición 5 → liquidoPagar     ← SIEMPRE EL QUINTO, EL ÚLTIMO
+
+  Ejemplo: "2.913.567 2.364.941 1.861.531 752.939 2.160.628"
+    totalHaberes    = 2913567
+    totalDescuentos = 752939   (posición 4)
+    liquidoPagar    = 2160628  (posición 5 — el último)
+
+  CRÍTICO: liquidoPagar es el QUINTO número, NUNCA el cuarto.
+  En el ejemplo, 752.939 es totalDescuentos y 2.160.628 es liquidoPagar. Jamás al revés.
+
+EXTRAE:
+1. workerName: nombre completo del trabajador
+2. companyName: nombre del establecimiento/empresa
+3. month (1-12) y year (YYYY)
+4. sueldoBase: monto del ítem "Sueldo base" o "SUELDO BASE"
+5. haberes: [{name, amount}] — todos los haberes con su monto exacto de esa línea
+6. descuentos: [{name, amount}] — todos los descuentos con su monto exacto (0 si corresponde)
+7. totalHaberes: posición 1 de la fila de totales
+8. totalDescuentos: posición 4 de la fila de totales
+9. liquidoPagar: posición 5 (último) de la fila de totales
+10. afp: nombre de la AFP
+11. salud: nombre de la Isapre o Fonasa
+
+Solo JSON válido sin markdown:
 {"workerName":"","companyName":"","month":1,"year":2025,"sueldoBase":0,"haberes":[{"name":"","amount":0}],"descuentos":[{"name":"","amount":0}],"totalHaberes":0,"totalDescuentos":0,"liquidoPagar":0,"afp":"","salud":""}`;
 
   const data = await secureAnthropicFetch({
@@ -427,7 +508,7 @@ function LoginScreen({ onLogin }) {
     setLoading(true); setError("");
     try {
       const data = await login(username.trim(), password);
-      onLogin(data.username);
+      onLogin(data.username, data.token);
     } catch(e) {
       setError(e.message);
     } finally {
@@ -582,7 +663,7 @@ function UploadTab({ salaries, onAnalysis, rawText, setRawText }) {
 }
 
 /* ── ANALYSIS TAB ────────────────────────────────────────────────────── */
-function AnalysisTab({ analysis }) {
+function AnalysisTab({ analysis, budget, setBudget }) {
   if (!analysis) {
     return (
       <Card className="text-center py-20">
@@ -592,10 +673,23 @@ function AnalysisTab({ analysis }) {
     );
   }
   const { expenses=[], totalExpenses=0, summary="", topCategories=[], recommendations=[], salaryRatio } = analysis;
+  const [showBudget, setShowBudget] = useState(false);
+  const [editBudget, setEditBudget] = useState({});
+
   const catMap = {};
   expenses.forEach((e) => { catMap[e.category] = (catMap[e.category]||0) + e.amount; });
   const pieData = Object.entries(catMap).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   const avgExpense = expenses.length > 0 ? totalExpenses / expenses.length : 0;
+
+  const saveBudget = () => {
+    const parsed = {};
+    Object.entries(editBudget).forEach(([k,v]) => {
+      const n = parseFloat(String(v).replace(/\./g,"").replace(",","."));
+      if(n>0) parsed[k] = n;
+    });
+    setBudget(parsed);
+    setShowBudget(false);
+  };
 
   return (
     <div className="space-y-5">
@@ -614,6 +708,66 @@ function AnalysisTab({ analysis }) {
         <KpiCard label="Gasto Promedio" value={fmt(avgExpense)}    accent="amber" />
         {salaryRatio && <KpiCard label="% del Sueldo" value={salaryRatio} accent="violet" />}
       </div>
+      {/* BUDGET SEMAPHORE */}
+      {Object.keys(budget||{}).length > 0 && (
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest">🚦 Presupuesto del mes</h3>
+            <button onClick={()=>{setEditBudget({...budget});setShowBudget(true);}} className="text-xs text-slate-500 hover:text-slate-300">Editar</button>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(budget).map(([cat, limite]) => {
+              const gastado = catMap[cat] || 0;
+              const pct     = Math.min(100, Math.round((gastado/limite)*100));
+              const color   = pct >= 90 ? "#f87171" : pct >= 70 ? "#fbbf24" : "#34d399";
+              const icon    = pct >= 90 ? "🔴" : pct >= 70 ? "🟡" : "🟢";
+              return (
+                <div key={cat}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-slate-300">{icon} {cat}</span>
+                    <span className="text-slate-400 font-mono">{fmt(gastado)} / {fmt(limite)}</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{width:`${pct}%`, background: color}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* BUDGET EDITOR */}
+      {showBudget && (
+        <Card>
+          <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">Definir presupuesto por categoría</h3>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {pieData.map(({name}) => (
+              <div key={name}>
+                <label className="text-xs text-slate-500 mb-0.5 block">{name}</label>
+                <input
+                  value={editBudget[name]||""}
+                  onChange={e=>setEditBudget(prev=>({...prev,[name]:e.target.value}))}
+                  placeholder="Sin límite"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={saveBudget} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold text-white">Guardar presupuesto</button>
+            <button onClick={()=>setShowBudget(false)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs text-slate-300">Cancelar</button>
+          </div>
+        </Card>
+      )}
+
+      {!showBudget && Object.keys(budget||{}).length === 0 && (
+        <button onClick={()=>{setEditBudget({});setShowBudget(true);}}
+          className="w-full py-2.5 border border-dashed border-slate-700 hover:border-emerald-600/50 rounded-xl text-xs text-slate-500 hover:text-slate-300 transition-all">
+          🚦 Definir presupuesto mensual por categoría
+        </button>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       <Card>
         <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Distribución por Categoría</h3>
@@ -701,10 +855,9 @@ function SalaryTab({ salaries, setSalaries }) {
   const handleAdd = () => {
     const val = parseFloat(String(amount).replace(/\./g,"").replace(",","."));
     if (!val || val <= 0) return;
-    setSalaries((prev) => {
-      const filtered = prev.filter((s)=>!(s.month===month&&s.year===year));
-      return [...filtered, {month,year,amount:val,note}].sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month);
-    });
+    setSalaries((prev) =>
+      [...prev, {month, year, amount: val, note}].sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month)
+    );
     setAmount(""); setNote("");
   };
 
@@ -725,22 +878,32 @@ function SalaryTab({ salaries, setSalaries }) {
 
   const handleAddFromPayslip = () => {
     if (!payslip) return;
-    setSalaries((prev)=>{
-      const filtered = prev.filter((s)=>!(s.month===payslip.month&&s.year===payslip.year));
-      return [...filtered, {
+    setSalaries((prev) =>
+      [...prev, {
         month: payslip.month,
         year: payslip.year,
         amount: payslip.liquidoPagar,
         note: `Liquidación ${payslip.companyName||""}`.trim(),
         payslip: payslip,
-      }].sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month);
-    });
+      }].sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month)
+    );
     setPayslip(null); setPdfFile(null);
   };
 
-  const chartData = salaries.map((s)=>({ label:`${MONTHS_ES[s.month-1].slice(0,3)} ${s.year}`, sueldo:s.amount }));
-  const avgSalary    = salaries.length>0 ? salaries.reduce((a,s)=>a+s.amount,0)/salaries.length : 0;
-  const latestSalary = salaries.length>0 ? salaries[salaries.length-1].amount : 0;
+  // Combine entries with same month/year for KPIs, chart and combined-totals display
+  const monthTotalsMap = {};
+  salaries.forEach(s => {
+    const key = `${s.year}-${String(s.month).padStart(2,"0")}`;
+    if (!monthTotalsMap[key]) monthTotalsMap[key] = { month: s.month, year: s.year, total: 0, count: 0, key };
+    monthTotalsMap[key].total += s.amount;
+    monthTotalsMap[key].count++;
+  });
+  const monthTotals   = Object.values(monthTotalsMap).sort((a,b)=>a.key.localeCompare(b.key));
+  const combinedMonths = monthTotals.filter(m => m.count > 1);
+
+  const chartData    = monthTotals.map(m => ({ label:`${MONTHS_ES[m.month-1].slice(0,3)} ${m.year}`, sueldo: m.total }));
+  const avgSalary    = monthTotals.length > 0 ? monthTotals.reduce((a,m)=>a+m.total,0)/monthTotals.length : 0;
+  const latestSalary = monthTotals.length > 0 ? monthTotals[monthTotals.length-1].total : 0;
 
   return (
     <div className="space-y-5">
@@ -935,11 +1098,32 @@ function SalaryTab({ salaries, setSalaries }) {
               </ResponsiveContainer>
             </Card>
           )}
+          {combinedMonths.length > 0 && (
+            <Card glow>
+              <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">
+                Total combinado por mes
+              </h3>
+              <div className="space-y-2">
+                {combinedMonths.map(m => (
+                  <div key={m.key} className="flex items-center justify-between p-3 bg-slate-800/60 rounded-xl">
+                    <div>
+                      <span className="text-sm text-slate-200 font-medium">
+                        Total {MONTHS_ES[m.month-1]} {m.year}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-500">{m.count} sueldos</span>
+                    </div>
+                    <span className="text-base font-mono font-bold text-emerald-400">{fmt(m.total)}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <Card>
             <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">Historial</h3>
             <div className="space-y-1 max-h-64 overflow-y-auto">
-              {[...salaries].reverse().map((s,i)=>(
-                <div key={i} className="py-2 border-b border-slate-800/60 last:border-0">
+              {salaries.map((s, origIdx) => ({ s, origIdx })).reverse().map(({ s, origIdx }) => (
+                <div key={origIdx} className="py-2 border-b border-slate-800/60 last:border-0">
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
                       <span className="text-sm text-slate-200">{MONTHS_ES[s.month-1]} {s.year}</span>
@@ -947,11 +1131,10 @@ function SalaryTab({ salaries, setSalaries }) {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-mono text-emerald-400">{fmt(s.amount)}</span>
-                      <button onClick={()=>setSalaries((prev)=>prev.filter((x)=>!(x.month===s.month&&x.year===s.year)))}
+                      <button onClick={()=>setSalaries(prev => prev.filter((_,i) => i !== origIdx))}
                         className="text-slate-700 hover:text-rose-400 transition-colors text-xs">✕</button>
                     </div>
                   </div>
-                  {/* Show payslip summary if available */}
                   {s.payslip && (
                     <div className="mt-1 flex gap-3 text-xs">
                       <span className="text-slate-600">Bruto: <span className="text-slate-500">{fmt(s.payslip.totalHaberes)}</span></span>
@@ -972,82 +1155,121 @@ function SalaryTab({ salaries, setSalaries }) {
 }
 
 /* ── AI: house projection ─────────────────────────────────────────────── */
-async function projectHouseAI({ salaries, analysis, houseMonthly, currentRent, extraIncome }) {
+async function projectHouseAI({ salaries, analysis, periods, creditos, ahorros, houseMonthly, currentRent, extraIncome }) {
   if (DEMO_MODE) { await demoDelay(2500); return DEMO_PROJECTION_RESULT; }
-  const avgSalary = salaries.length > 0
-    ? salaries.reduce((a,s)=>a+s.amount,0)/salaries.length : 0;
-  const latestSalary = salaries.length > 0 ? salaries[salaries.length-1].amount : 0;
 
-  const transactionList = analysis?.expenses?.length > 0
-    ? `Transacciones reales del período (analiza CADA una):
-${analysis.expenses.map((e,i)=>`${i+1}. ${e.desc} | ${fmt(e.amount)} | ${e.category}`).join("\n")}`
-    : "No hay transacciones cargadas.";
+  // ── Salaries ──────────────────────────────────────────────────────────
+  const projMonthMap = {};
+  salaries.forEach(s => {
+    const key = `${s.year}-${String(s.month).padStart(2,"0")}`;
+    if (!projMonthMap[key]) projMonthMap[key] = { month: s.month, year: s.year, total: 0 };
+    projMonthMap[key].total += s.amount;
+  });
+  const projMonths   = Object.values(projMonthMap).sort((a,b)=>`${a.year}${a.month}`.localeCompare(`${b.year}${b.month}`));
+  const avgSalary    = projMonths.length > 0 ? projMonths.reduce((a,m)=>a+m.total,0)/projMonths.length : 0;
+  const latestSalary = projMonths.length > 0 ? projMonths[projMonths.length-1].total : 0;
 
-  const salaryInfo = salaries.length > 0
-    ? `Sueldo líquido: ${fmt(latestSalary)} | Promedio: ${fmt(avgSalary)}`
-    : "No hay sueldos registrados.";
+  // ── Expenses: promedio de todos los períodos disponibles ──────────────
+  const periodsWithData = (periods || []).filter(p => p.analysis?.totalExpenses > 0);
+  let avgMonthlyExpenses = 0;
+  let representativeExpenses = [];
+  if (periodsWithData.length > 0) {
+    avgMonthlyExpenses = Math.round(
+      periodsWithData.reduce((sum, p) => sum + p.analysis.totalExpenses, 0) / periodsWithData.length
+    );
+    representativeExpenses = periodsWithData[periodsWithData.length - 1].analysis.expenses || [];
+  } else if (analysis?.totalExpenses > 0) {
+    avgMonthlyExpenses = analysis.totalExpenses;
+    representativeExpenses = analysis.expenses || [];
+  }
 
-  const extraInfo = extraIncome > 0 ? `Ingresos extra: ${fmt(extraIncome)}/mes` : "";
-  const rentInfo  = currentRent  > 0 ? `Arriendo actual que dejarías de pagar: ${fmt(currentRent)}` : "";
-  const expenseCtx = analysis ? `Total gastos analizados: ${fmt(analysis.totalExpenses)}` : "";
+  // ── Créditos activos: suma de cuotas mensuales ────────────────────────
+  const creditosActivos = (creditos || []).filter(c => c.cuota > 0 && (c.mesesTotal - c.mesesPagados) > 0);
+  const monthlyCreditos = creditosActivos.reduce((s, c) => s + c.cuota, 0);
 
-  const prompt = `Eres un asesor financiero personal directo y sin rodeos. Analiza si esta persona puede comprar una casa basándote en sus gastos REALES.
+  // ── Aportes de ahorro activos (metas no alcanzadas) ───────────────────
+  const ahorrosActivos  = (ahorros || []).filter(a => a.aporte > 0 && a.actual < a.objetivo);
+  const monthlyAhorros  = ahorrosActivos.reduce((s, a) => s + a.aporte, 0);
 
-INGRESOS:
-${salaryInfo}
-${extraInfo}
+  // ── Pre-calcular números clave en JS ─────────────────────────────────
+  const totalIncome        = latestSalary + extraIncome;
+  const gastosNetosConCasa = Math.max(0, avgMonthlyExpenses - currentRent);
+  const disponibleConCasa  = totalIncome - houseMonthly - gastosNetosConCasa - monthlyCreditos - monthlyAhorros;
+  const threshold15        = Math.round(totalIncome * 0.15);
+  const viabilityStatus    = disponibleConCasa > threshold15 ? "green" : disponibleConCasa >= 0 ? "yellow" : "red";
 
-GASTOS ACTUALES:
-${expenseCtx}
-${rentInfo}
+  const periodLabel = periodsWithData.length > 1
+    ? `promedio de ${periodsWithData.length} períodos`
+    : "período analizado";
 
-NUEVA CASA - Costo mensual: ${fmt(houseMonthly)}
+  const creditosCtx = creditosActivos.length > 0
+    ? `Cuotas créditos activos: ${fmt(monthlyCreditos)}/mes (${creditosActivos.map(c=>`${c.nombre} $${c.cuota.toLocaleString("es-CL")}`).join(", ")})`
+    : "Sin créditos activos.";
+
+  const ahorrosCtx = ahorrosActivos.length > 0
+    ? `Aportes ahorro activos: ${fmt(monthlyAhorros)}/mes (${ahorrosActivos.map(a=>`${a.nombre} $${a.aporte.toLocaleString("es-CL")}`).join(", ")})`
+    : "Sin aportes de ahorro activos.";
+
+  const transactionList = representativeExpenses.length > 0
+    ? `Transacciones del período más reciente (clasifica CADA una):
+${representativeExpenses.map((e,i) => `${i+1}. ${e.desc} | ${fmt(e.amount)} | ${e.category}`).join("\n")}`
+    : "No hay transacciones bancarias cargadas — devuelve transactions como array vacío.";
+
+  const prompt = `Eres un asesor financiero personal directo. Analiza si esta persona/hogar puede comprar una casa.
+
+NÚMEROS EXACTOS (calculados externamente — úsalos SIN modificar en el JSON):
+  totalIncome        = ${totalIncome}       ← sueldo + extras
+  avgMonthlyExpenses = ${avgMonthlyExpenses} ← gastos bancarios (${periodLabel})
+  monthlyCreditos    = ${monthlyCreditos}    ← cuotas de créditos activos
+  monthlyAhorros     = ${monthlyAhorros}     ← aportes ahorro activos
+  houseMonthly       = ${houseMonthly}       ← dividendo/arriendo casa
+  currentRent        = ${currentRent}        ← arriendo actual que deja de pagar
+  disponibleConCasa  = ${disponibleConCasa}  ← RESULTADO FINAL (ingreso - casa - gastos - créditos - ahorros)
+  viabilityStatus    = "${viabilityStatus}" ← ya calculado, no cambiar
+
+DETALLE INGRESOS:
+${salaries.length > 0 ? `Sueldo líquido reciente: ${fmt(latestSalary)} | Promedio: ${fmt(avgSalary)}` : "Sin sueldos."}
+${extraIncome > 0 ? `Ingresos extra: ${fmt(extraIncome)}/mes` : ""}
+
+COMPROMISOS MENSUALES FIJOS:
+Gastos bancarios: ${fmt(avgMonthlyExpenses)}/mes${currentRent > 0 ? ` (incluye arriendo ${fmt(currentRent)} que dejaría de pagar)` : ""}
+${creditosCtx}
+${ahorrosCtx}
 
 ${transactionList}
 
-INSTRUCCIONES ESTRICTAS:
-1. Ingreso total = sueldo líquido + extras.
-2. Impacto neto = costo casa - arriendo actual (si aplica, si no arriendo el impacto es el costo total de la casa).
-3. Disponible con casa = ingreso total - costo casa - (gastos actuales - arriendo actual si aplica).
-4. Semáforo: "green" si disponible >15% del ingreso, "yellow" si 0-15%, "red" si negativo.
-5. Clasifica CADA transacción real:
-   - "cut": eliminar completamente (suscripciones innecesarias, delivery excesivo, lujos, duplicados)
-   - "reduce": necesario pero se puede bajar (restaurantes, entretenimiento, compras de ropa)
-   - "keep": esencial, no tocar (salud, supermercado básico, transporte trabajo, servicios básicos)
-   savedAmount: monto completo si "cut", monto de reducción si "reduce", 0 si "keep".
-   reason: frase directa explicando por qué (ej: "Delivery 3 veces por semana es prescindible con casa propia")
-6. totalPotentialSaving: suma de todos los savedAmount.
-7. Presupuesto proyectado ajustado (budget) con la casa incluida y gastos recortados.
-8. 4 recomendaciones personalizadas y directas basadas en los gastos reales vistos.
-9. Resumen ejecutivo 3-4 oraciones siendo directo sobre la situación.
-10. extraNeeded: 0 si alcanza, si no cuánto falta.
+INSTRUCCIONES:
+1. JSON: totalIncome = ${totalIncome}, disponibleConCasa = ${disponibleConCasa}, viabilityStatus = "${viabilityStatus}" — EXACTOS.
+2. houseImpact = ${houseMonthly - currentRent} (costo neto de la casa).
+3. extraNeeded: 0 si disponibleConCasa ≥ 0; si no → Math.max(0, ${Math.abs(Math.min(0,disponibleConCasa))} - totalPotentialSaving).
+4. Clasifica CADA transacción bancaria:
+   - "cut": eliminar (delivery excesivo, suscripciones duplicadas, lujos)
+   - "reduce": necesario pero reducible (restaurantes, ropa, entretenimiento)
+   - "keep": esencial (salud, supermercado, transporte laboral, servicios básicos)
+   savedAmount: total si "cut", reducción posible si "reduce", 0 si "keep". Reason: ≤12 palabras.
+5. totalPotentialSaving = suma exacta de savedAmount.
+6. budget: presupuesto proyectado con casa incluida y recortes aplicados.
+7. 4 recomendaciones concretas. Si hay créditos por terminar pronto, mencionarlos como oportunidad.
+8. summary: 3 oraciones directas con números reales. Mencionar créditos y aportes de ahorro si son relevantes.
 
 Solo JSON sin markdown:
-{
-  "viable": true,
-  "viabilityStatus": "green",
-  "summary": "",
-  "totalIncome": 0,
-  "houseImpact": 0,
-  "disponibleConCasa": 0,
-  "extraNeeded": 0,
-  "totalPotentialSaving": 0,
-  "transactions": [{"desc":"","amount":0,"category":"","action":"cut","reason":"","savedAmount":0}],
-  "savingsOpportunities": [{"category":"","currentAmount":0,"suggestedAmount":0,"saving":0}],
-  "budget": [{"category":"","amount":0}],
-  "recommendations": ["","","",""]
-}`;
+{"viable":true,"viabilityStatus":"${viabilityStatus}","summary":"","totalIncome":${totalIncome},"houseImpact":${houseMonthly-currentRent},"disponibleConCasa":${disponibleConCasa},"extraNeeded":0,"totalPotentialSaving":0,"transactions":[{"desc":"","amount":0,"category":"","action":"cut","reason":"","savedAmount":0}],"savingsOpportunities":[{"category":"","currentAmount":0,"suggestedAmount":0,"saving":0}],"budget":[{"category":"","amount":0}],"recommendations":["","","",""]}`;
 
   const data = await secureAnthropicFetch({
     model: "claude-sonnet-4-5", max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   });
   const text = (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-  return JSON.parse(text);
+  const result = JSON.parse(text);
+  result.totalIncome       = totalIncome;
+  result.disponibleConCasa = disponibleConCasa;
+  result.viabilityStatus   = viabilityStatus;
+  result.viable            = disponibleConCasa >= 0;
+  return result;
 }
 
 /* ── PROJECTION TAB ──────────────────────────────────────────────────── */
-function ProjectionTab({ salaries, analysis }) {
+function ProjectionTab({ salaries, analysis, periods, creditos, ahorros }) {
   const [houseMonthly, setHouseMonthly] = useState("");
   const [currentRent,  setCurrentRent]  = useState("");
   const [extraIncome,  setExtraIncome]  = useState("");
@@ -1055,7 +1277,30 @@ function ProjectionTab({ salaries, analysis }) {
   const [error,    setError]    = useState("");
   const [result,   setResult]   = useState(null);
 
-  const hasData = salaries.length > 0 || analysis;
+  const periodsWithData    = (periods  || []).filter(p => p.analysis?.totalExpenses > 0);
+  const creditosActivos    = (creditos || []).filter(c => c.cuota > 0 && (c.mesesTotal - c.mesesPagados) > 0);
+  const ahorrosActivos     = (ahorros  || []).filter(a => a.aporte > 0 && a.actual < a.objetivo);
+  const creditosProximos   = creditosActivos.filter(c => (c.mesesTotal - c.mesesPagados) <= 6);
+  const monthlyCreditos    = creditosActivos.reduce((s, c) => s + c.cuota, 0);
+  const monthlyAhorros     = ahorrosActivos.reduce((s, a) => s + a.aporte, 0);
+
+  const hasExpenses = periodsWithData.length > 0 || analysis?.totalExpenses > 0;
+  const hasData     = salaries.length > 0 || hasExpenses;
+
+  const avgMonthlyExpenses = periodsWithData.length > 0
+    ? Math.round(periodsWithData.reduce((s, p) => s + p.analysis.totalExpenses, 0) / periodsWithData.length)
+    : (analysis?.totalExpenses || 0);
+
+  const latestSalary = (() => {
+    const map = {};
+    salaries.forEach(s => {
+      const k = `${s.year}-${String(s.month).padStart(2,"0")}`;
+      if (!map[k]) map[k] = 0;
+      map[k] += s.amount;
+    });
+    const vals = Object.entries(map).sort(([a],[b])=>a.localeCompare(b));
+    return vals.length > 0 ? vals[vals.length-1][1] : 0;
+  })();
 
   const handleProject = async () => {
     const monthly = parseFloat(String(houseMonthly).replace(/\./g,"").replace(",","."));
@@ -1063,7 +1308,7 @@ function ProjectionTab({ salaries, analysis }) {
     setLoading(true); setError(""); setResult(null);
     try {
       const r = await projectHouseAI({
-        salaries, analysis,
+        salaries, analysis, periods, creditos, ahorros,
         houseMonthly: monthly,
         currentRent:  parseFloat(String(currentRent).replace(/\./g,"").replace(",",".")) || 0,
         extraIncome:  parseFloat(String(extraIncome).replace(/\./g,"").replace(",",".")) || 0,
@@ -1081,14 +1326,88 @@ function ProjectionTab({ salaries, analysis }) {
 
   return (
     <div className="space-y-5">
-      {/* Context warning if no data */}
-      {!hasData && (
+      {/* ── Datos detectados ──────────────────────────────────────────── */}
+      {hasData ? (
+        <div className="grid grid-cols-2 gap-2">
+          {latestSalary > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-950/50 border border-emerald-800/40 rounded-xl">
+              <span className="text-base shrink-0">💰</span>
+              <div>
+                <p className="text-xs text-emerald-400 font-medium">Sueldo detectado</p>
+                <p className="text-xs text-slate-300 font-mono">{fmt(latestSalary)}</p>
+              </div>
+            </div>
+          )}
+          {avgMonthlyExpenses > 0 ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-sky-950/50 border border-sky-800/40 rounded-xl">
+              <span className="text-base shrink-0">📊</span>
+              <div>
+                <p className="text-xs text-sky-400 font-medium">Gastos bancarios{periodsWithData.length > 1 ? ` (${periodsWithData.length} meses)` : ""}</p>
+                <p className="text-xs text-slate-300 font-mono">{fmt(avgMonthlyExpenses)}/mes</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-950/40 border border-amber-800/40 rounded-xl">
+              <span className="text-base shrink-0">⚠️</span>
+              <div>
+                <p className="text-xs text-amber-400 font-medium">Sin gastos cargados</p>
+                <p className="text-xs text-slate-500">Sube un estado de cuenta</p>
+              </div>
+            </div>
+          )}
+          {monthlyCreditos > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-rose-950/40 border border-rose-800/40 rounded-xl">
+              <span className="text-base shrink-0">💳</span>
+              <div>
+                <p className="text-xs text-rose-400 font-medium">Cuotas créditos ({creditosActivos.length})</p>
+                <p className="text-xs text-slate-300 font-mono">{fmt(monthlyCreditos)}/mes</p>
+              </div>
+            </div>
+          )}
+          {monthlyAhorros > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-violet-950/40 border border-violet-800/40 rounded-xl">
+              <span className="text-base shrink-0">🎯</span>
+              <div>
+                <p className="text-xs text-violet-400 font-medium">Aportes ahorro ({ahorrosActivos.length})</p>
+                <p className="text-xs text-slate-300 font-mono">{fmt(monthlyAhorros)}/mes</p>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
         <div className="flex gap-3 p-4 bg-amber-950/40 border border-amber-800/40 rounded-2xl">
           <span className="text-xl shrink-0">💡</span>
           <p className="text-xs text-amber-300 leading-relaxed">
-            Para una proyección más precisa, carga tu <strong>análisis de gastos</strong> y registra tus <strong>sueldos</strong> primero. Aun así puedes hacer una proyección básica.
+            Para una proyección precisa, carga tu <strong>estado de cuenta</strong> (tab Gastos) y registra tu <strong>sueldo</strong> (tab Sueldos) primero.
           </p>
         </div>
+      )}
+
+      {/* ── Créditos próximos a liberarse ─────────────────────────────── */}
+      {creditosProximos.length > 0 && (
+        <Card>
+          <p className="text-xs font-medium text-amber-400 uppercase tracking-widest mb-2">🔔 Créditos por terminar pronto</p>
+          <div className="space-y-2">
+            {creditosProximos.map(c => {
+              const restantes = c.mesesTotal - c.mesesPagados;
+              return (
+                <div key={c.id} className="flex items-center justify-between p-2.5 bg-amber-950/30 border border-amber-800/30 rounded-xl">
+                  <div>
+                    <p className="text-xs font-medium text-slate-200">{c.nombre}</p>
+                    <p className="text-xs text-slate-500">Se termina en <span className="text-amber-400 font-medium">{restantes} mes{restantes !== 1 ? "es" : ""}</span></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Libera</p>
+                    <p className="text-sm font-mono font-bold text-emerald-400">+{fmt(c.cuota)}/mes</p>
+                  </div>
+                </div>
+              );
+            })}
+            <p className="text-xs text-slate-600 pt-1">
+              Total a liberar: <span className="text-emerald-400 font-medium">{fmt(creditosProximos.reduce((s,c)=>s+c.cuota,0))}/mes</span> en los próximos 6 meses
+            </p>
+          </div>
+        </Card>
       )}
 
       {/* Input form */}
@@ -1310,11 +1629,106 @@ function ProjectionTab({ salaries, analysis }) {
 }
 
 
+
+/* ── AI: multi-period analysis ────────────────────────────────────────── */
+async function analyzeMultiPeriodsAI(periods, salaries) {
+  if (DEMO_MODE) {
+    await demoDelay(2000);
+    return {
+      overallSummary: "En los 2 períodos analizados se observa un gasto promedio mensual de $789.700. El delivery y las suscripciones de streaming son los gastos más prescindibles detectados consistentemente. Se recomienda atención especial en Alimentación que representa el 33% del gasto total.",
+      totalAllPeriods: 1579400,
+      avgMonthly: 789700,
+      trend: "stable",
+      trendDesc: "Los gastos se mantienen estables entre períodos.",
+      alerts: [
+        { level: "high",   title: "Delivery excesivo",         desc: "Rappi y PedidosYa suman más de $44.000 al mes consistentemente. Es el gasto más fácil de eliminar." },
+        { level: "high",   title: "Suscripciones duplicadas",  desc: "Tienes 4 servicios de streaming activos simultáneamente por $52.500/mes." },
+        { level: "medium", title: "Ropa sin presupuesto fijo", desc: "El gasto en ropa varía mucho y no tiene un límite claro. Considera un presupuesto mensual fijo." },
+        { level: "low",    title: "Farmacia frecuente",        desc: "Varios gastos en farmacias. Revisa si hay medicamentos que puedas comprar en cantidad." },
+      ],
+      cuts: [
+        { desc: "Eliminar 2 de 4 servicios streaming",   saving: 18800, effort: "Fácil",  impact: "Alto" },
+        { desc: "Reducir delivery a 1 vez/semana",        saving: 32000, effort: "Medio",  impact: "Alto" },
+        { desc: "Presupuesto fijo ropa $40.000/mes",      saving: 69800, effort: "Medio",  impact: "Alto" },
+        { desc: "Comprar medicamentos en cantidad",        saving: 8000,  effort: "Fácil",  impact: "Bajo" },
+        { desc: "Cocinar más en casa (menos restaurantes)",saving: 25000, effort: "Medio",  impact: "Medio" },
+      ],
+      topRecurring: [
+        { desc: "SUPERMERCADO LIDER/JUMBO", avgAmount: 143700, category: "Alimentación", verdict: "Esencial — mantener" },
+        { desc: "RAPPI / PEDIDOSYA",        avgAmount: 44700,  category: "Alimentación", verdict: "Eliminar — cocinar en casa" },
+        { desc: "STREAMING (4 servicios)",  avgAmount: 52500,  category: "Entretenimiento", verdict: "Reducir a 2 máximo" },
+        { desc: "FARMACIA",                 avgAmount: 31200,  category: "Salud",        verdict: "Necesario — optimizable" },
+        { desc: "BENCINA/COPEC",            avgAmount: 41500,  category: "Transporte",   verdict: "Esencial — mantener" },
+      ],
+      recommendations: [
+        "El mayor ahorro inmediato está en delivery y streaming: eliminarlos completamente ahorra $69.500/mes sin afectar la calidad de vida significativamente.",
+        "La categoría Ropa/Calzado es la más variable entre períodos — establecer un presupuesto fijo de $40.000 y no superarlo genera un ahorro promedio de $69.800.",
+        "Considera hacer una compra mensual grande en farmacia en lugar de compras frecuentes pequeñas — ahorras tiempo y puedes aprovechar ofertas.",
+        "El gasto en supermercado es saludable y consistente. No es necesario reducirlo — es mejor mantener la alimentación en casa que gastar en delivery.",
+      ],
+    };
+  }
+
+  const salaryInfo = salaries.length > 0
+    ? `Sueldo promedio: ${fmt(salaries.reduce((a,s)=>a+s.amount,0)/salaries.length)}`
+    : "Sin sueldos registrados.";
+
+  const periodsData = periods.map((p,i) => {
+    const topCats = (p.analysis.topCategories||[]).map(c=>`${c.name}: ${fmt(c.total)}`).join(", ");
+    const topExpenses = (p.analysis.expenses||[])
+      .sort((a,b)=>b.amount-a.amount).slice(0,8)
+      .map(e=>`${e.desc}: ${fmt(e.amount)}`).join(", ");
+    return `Período ${i+1} — ${p.label}: Total ${fmt(p.analysis.totalExpenses)}, Categorías: ${topCats}, Mayores gastos: ${topExpenses}`;
+  }).join("\n");
+
+  const prompt = `Eres un asesor financiero personal experto. Analiza TODOS los períodos de gastos juntos y entrega un informe consolidado con recomendaciones concretas de ahorro.
+
+${salaryInfo}
+
+PERÍODOS ANALIZADOS (${periods.length} meses):
+${periodsData}
+
+ENTREGA:
+1. overallSummary: resumen ejecutivo 3-4 oraciones del patrón de gastos general
+2. totalAllPeriods: suma total de todos los períodos
+3. avgMonthly: promedio mensual
+4. trend: "increasing" | "decreasing" | "stable"
+5. trendDesc: 1 frase describiendo la tendencia
+6. alerts: 3-5 alertas de gastos preocupantes [{level:"high"|"medium"|"low", title, desc}]
+7. cuts: 5 recortes específicos ordenados por ahorro [{desc, saving (mensual estimado), effort:"Fácil"|"Medio"|"Difícil", impact:"Alto"|"Medio"|"Bajo"}]
+8. topRecurring: 5 gastos más recurrentes entre períodos [{desc, avgAmount, category, verdict}]
+9. recommendations: 4 recomendaciones concretas y personalizadas
+
+Solo JSON válido sin markdown:
+{"overallSummary":"","totalAllPeriods":0,"avgMonthly":0,"trend":"stable","trendDesc":"","alerts":[{"level":"high","title":"","desc":""}],"cuts":[{"desc":"","saving":0,"effort":"Fácil","impact":"Alto"}],"topRecurring":[{"desc":"","avgAmount":0,"category":"","verdict":""}],"recommendations":[""]}`;
+
+  const data = await secureAnthropicFetch({
+    model: "claude-sonnet-4-5", max_tokens: 3000,
+    messages: [{ role: "user", content: prompt }],
+  });
+  const text = (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+  return JSON.parse(text);
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    MULTI-PERIOD ANALYSIS TAB
 ══════════════════════════════════════════════════════════════════════ */
-function MultiAnalysisTab({ periods, onRemove }) {
-  const [view, setView] = useState("combined"); // "combined" | "compare"
+function MultiAnalysisTab({ periods, salaries, onRemove }) {
+  const [view,      setView]      = useState("combined"); // "combined" | "compare" | "ai"
+  const [aiResult,  setAiResult]  = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError,   setAiError]   = useState("");
+
+  const handleAiAnalysis = async (salaries) => {
+    if (periods.length === 0) return;
+    setAiLoading(true); setAiError(""); setAiResult(null);
+    try {
+      const result = await analyzeMultiPeriodsAI(periods, salaries || []);
+      setAiResult(result);
+      setView("ai");
+    } catch(e) { setAiError("Error: " + e.message); }
+    finally { setAiLoading(false); }
+  };
 
   if (periods.length === 0) {
     return (
@@ -1344,6 +1758,31 @@ function MultiAnalysisTab({ periods, onRemove }) {
   });
   const allCats = [...new Set(periods.flatMap(p => (p.analysis.topCategories||[]).map(c=>c.name)))];
 
+  // ── Calendar month grouping — uses only periodoMes from AI (MM/YYYY) ────────
+  const monthlyMap = {};
+  periods.forEach(p => {
+    const pm = normalizePM(p.analysis?.periodoMes);
+    let monthKey, monthLabel;
+    if (pm) {
+      const [mm, yyyy] = pm.split("/");
+      monthKey  = `${yyyy}-${mm}`;
+      monthLabel = `${MONTHS_ES[parseInt(mm, 10) - 1]} ${yyyy}`;
+    } else {
+      monthKey  = "zzz-sin-periodo";
+      monthLabel = "Sin período identificado";
+    }
+    if (!monthlyMap[monthKey]) {
+      monthlyMap[monthKey] = { label: monthLabel, total: 0, transactions: 0, banks: new Set(), key: monthKey };
+    }
+    monthlyMap[monthKey].total        += p.analysis.totalExpenses    || 0;
+    monthlyMap[monthKey].transactions += p.analysis.expenses?.length || 0;
+    if (p.analysis?.banco) monthlyMap[monthKey].banks.add(p.analysis.banco);
+  });
+  const monthlyData = Object.values(monthlyMap)
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map(m => ({ ...m, banks: [...m.banks] }));
+  const monthlyMax = Math.max(...monthlyData.map(m => m.total), 1);
+
   return (
     <div className="space-y-5">
       {/* Period list */}
@@ -1358,6 +1797,10 @@ function MultiAnalysisTab({ periods, onRemove }) {
             <button onClick={()=>setView("compare")}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="compare"?"bg-emerald-700 text-white":"text-slate-400 hover:text-slate-200"}`}>
               Comparativa
+            </button>
+            <button onClick={()=>setView("ai")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="ai"?"bg-emerald-700 text-white":"text-slate-400 hover:text-slate-200"}`}>
+              🤖 IA
             </button>
           </div>
         </div>
@@ -1377,6 +1820,25 @@ function MultiAnalysisTab({ periods, onRemove }) {
           ))}
         </div>
       </Card>
+
+      {/* AI ANALYSIS TRIGGER — always visible at top */}
+      {view !== "ai" && (
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200 mb-0.5">🤖 Análisis IA Consolidado</h3>
+              <p className="text-xs text-slate-500">Analiza todos los períodos juntos — alertas, recortes y recomendaciones personalizadas</p>
+            </div>
+            <button
+              onClick={()=>handleAiAnalysis(salaries)}
+              disabled={aiLoading}
+              className="shrink-0 ml-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2">
+              {aiLoading ? <><span className="animate-spin inline-block">⟳</span> Analizando…</> : <>✦ Analizar todo</>}
+            </button>
+          </div>
+          {aiError && <p className="mt-2 text-xs text-rose-400">{aiError}</p>}
+        </Card>
+      )}
 
       {/* COMBINED VIEW */}
       {view === "combined" && (
@@ -1491,6 +1953,52 @@ function MultiAnalysisTab({ periods, onRemove }) {
             </div>
           </Card>
 
+          <ResumenComparativo periods={periods}/>
+
+          {/* Calendar month totals */}
+          <Card>
+            <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">
+              Total por mes calendario
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left text-xs text-slate-500 pb-2 font-medium">Mes</th>
+                    <th className="text-left text-xs text-slate-500 pb-2 font-medium">Banco(s)</th>
+                    <th className="text-right text-xs text-slate-500 pb-2 font-medium">Total combinado</th>
+                    <th className="text-right text-xs text-slate-500 pb-2 font-medium">Transac.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyData.map((m, i) => (
+                    <tr key={i} className="border-b border-slate-800/40 last:border-0 group">
+                      <td className="py-2.5 pr-3">
+                        <span className="text-slate-200 font-medium">{m.label}</span>
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        {m.banks.length > 0
+                          ? <span className="text-slate-400 text-xs">{m.banks.join(", ")}</span>
+                          : <span className="text-slate-600 text-xs">—</span>
+                        }
+                      </td>
+                      <td className="py-2.5 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-mono text-emerald-400 font-semibold">{fmt(m.total)}</span>
+                          <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-emerald-500/60"
+                              style={{ width: `${Math.round((m.total / monthlyMax) * 100)}%` }}/>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2.5 text-right text-slate-400">{m.transactions}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
           {/* Month by month table */}
           <Card>
             <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">Resumen por período</h3>
@@ -1527,7 +2035,363 @@ function MultiAnalysisTab({ periods, onRemove }) {
           </Card>
         </>
       )}
+
+
+      {/* AI VIEW */}
+      {view === "ai" && aiResult && (
+        <div className="space-y-5">
+          {/* Summary */}
+          <Card glow>
+            <div className="flex gap-3">
+              <span className="text-2xl shrink-0">🤖</span>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-emerald-400 uppercase tracking-widest mb-1">Análisis Consolidado — {periods.length} períodos</p>
+                <p className="text-sm text-slate-300 leading-relaxed">{aiResult.overallSummary}</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="Total todos los períodos" value={fmt(aiResult.totalAllPeriods)} accent="rose"/>
+            <KpiCard label="Promedio mensual"          value={fmt(aiResult.avgMonthly)}     accent="amber"/>
+            <KpiCard label="Períodos analizados"       value={periods.length}                accent="sky"/>
+            <KpiCard label="Tendencia"
+              value={aiResult.trend === "increasing" ? "↑ Subiendo" : aiResult.trend === "decreasing" ? "↓ Bajando" : "→ Estable"}
+              accent={aiResult.trend === "increasing" ? "rose" : aiResult.trend === "decreasing" ? "emerald" : "amber"}/>
+          </div>
+
+          {/* Alerts */}
+          {aiResult.alerts?.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">⚠️ Alertas detectadas</h3>
+              <div className="space-y-2">
+                {aiResult.alerts.map((a,i) => {
+                  const colors = { high: "bg-rose-950/40 border-rose-800/40 text-rose-400", medium: "bg-amber-950/40 border-amber-800/40 text-amber-400", low: "bg-slate-800/60 border-slate-700/40 text-slate-400" };
+                  const icons  = { high: "🔴", medium: "🟡", low: "🔵" };
+                  return (
+                    <div key={i} className={`p-3 rounded-xl border ${colors[a.level]}`}>
+                      <p className="text-sm font-semibold mb-0.5">{icons[a.level]} {a.title}</p>
+                      <p className="text-xs opacity-80 leading-relaxed">{a.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {/* Cuts */}
+          {aiResult.cuts?.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">✂️ Recortes recomendados</h3>
+              <div className="space-y-2">
+                {aiResult.cuts.map((c,i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-slate-800/60 rounded-xl border border-slate-700/40">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-200 truncate">{c.desc}</p>
+                      <div className="flex gap-2 mt-0.5">
+                        <span className="text-xs text-slate-500">Esfuerzo: <span className={c.effort==="Fácil"?"text-emerald-400":c.effort==="Medio"?"text-amber-400":"text-rose-400"}>{c.effort}</span></span>
+                        <span className="text-xs text-slate-500">Impacto: <span className={c.impact==="Alto"?"text-emerald-400":c.impact==="Medio"?"text-amber-400":"text-slate-400"}>{c.impact}</span></span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 ml-3 text-right">
+                      <p className="text-sm font-mono text-emerald-400">−{fmt(c.saving)}</p>
+                      <p className="text-xs text-slate-500">al mes</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-between pt-2 border-t border-slate-800 text-sm">
+                  <span className="text-slate-500">Ahorro potencial total</span>
+                  <span className="font-mono text-emerald-400 font-bold">{fmt(aiResult.cuts.reduce((a,c)=>a+c.saving,0))}/mes</span>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Top recurring */}
+          {aiResult.topRecurring?.length > 0 && (
+            <Card>
+              <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">🔄 Gastos más recurrentes</h3>
+              <div className="space-y-2">
+                {aiResult.topRecurring.map((t,i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800/40 last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-slate-200 truncate">{t.desc}</p>
+                      <p className="text-xs text-slate-500">{t.category} · <span className={t.verdict.includes("Eliminar")?"text-rose-400":t.verdict.includes("Reducir")?"text-amber-400":"text-emerald-400"}>{t.verdict}</span></p>
+                    </div>
+                    <span className="text-sm font-mono text-slate-300 shrink-0 ml-2">{fmt(t.avgAmount)}/mes</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Recommendations */}
+          <Card>
+            <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">💡 Plan de acción</h3>
+            <div className="space-y-2">
+              {aiResult.recommendations.map((r,i) => (
+                <div key={i} className="flex gap-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700/40">
+                  <span className="text-emerald-500 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
+                  <p className="text-sm text-slate-300 leading-relaxed">{r}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <button onClick={()=>setView("combined")} className="w-full py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+            ← Volver a vista acumulada
+          </button>
+        </div>
+      )}
+
     </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   RESUMEN COMPARATIVO (shown in MultiAnalysisTab compare view)
+══════════════════════════════════════════════════════════════════════ */
+function ResumenComparativo({ periods }) {
+  if (periods.length < 2) return null;
+
+  const parsePM = p => {
+    const pm = normalizePM(p.analysis?.periodoMes);
+    if (pm) {
+      const [mm, yyyy] = pm.split("/");
+      return parseInt(yyyy) * 100 + parseInt(mm);
+    }
+    return p.addedAt || 0;
+  };
+  const pmLabel = p => {
+    const pm = normalizePM(p.analysis?.periodoMes);
+    if (pm) {
+      const [mm, yyyy] = pm.split("/");
+      return `${MONTHS_ES[parseInt(mm)-1].slice(0,3)} ${yyyy}`;
+    }
+    return p.label;
+  };
+
+  const sorted = [...periods].sort((a, b) => parsePM(a) - parsePM(b));
+
+  // Trend data for line chart
+  const trendData = sorted.map(p => ({
+    label: pmLabel(p),
+    total: p.analysis.totalExpenses || 0,
+  }));
+
+  // Overall trend
+  const first       = sorted[0].analysis.totalExpenses || 0;
+  const last        = sorted[sorted.length - 1].analysis.totalExpenses || 0;
+  const overallDiff = last - first;
+  const overallPct  = first > 0 ? ((overallDiff / first) * 100).toFixed(1) : 0;
+
+  // Consecutive month-over-month deltas
+  const deltas = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const curr = sorted[i];
+    const prev = sorted[i - 1];
+    const diff = (curr.analysis.totalExpenses || 0) - (prev.analysis.totalExpenses || 0);
+    const pct  = prev.analysis.totalExpenses > 0
+      ? ((diff / prev.analysis.totalExpenses) * 100).toFixed(1) : 0;
+    const currCats = {}, prevCats = {};
+    (curr.analysis.topCategories || []).forEach(c => { currCats[c.name] = c.total; });
+    (prev.analysis.topCategories || []).forEach(c => { prevCats[c.name] = c.total; });
+    const catChanges = [...new Set([...Object.keys(currCats), ...Object.keys(prevCats)])]
+      .map(name => ({ name, diff: (currCats[name] || 0) - (prevCats[name] || 0) }))
+      .filter(c => Math.abs(c.diff) > 1000)
+      .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+      .slice(0, 3);
+    deltas.push({ from: pmLabel(prev), to: pmLabel(curr), diff, pct, catChanges, up: diff > 0 });
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Trend line chart */}
+      <Card>
+        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">📈 Tendencia de gastos</h3>
+        <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-4 ${overallDiff > 0 ? "bg-rose-950/40 border border-rose-800/40" : "bg-emerald-950/40 border border-emerald-800/40"}`}>
+          <span className="text-lg">{overallDiff > 0 ? "📈" : "📉"}</span>
+          <div>
+            <span className={`text-sm font-bold font-mono ${overallDiff > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+              {overallDiff > 0 ? "+" : ""}{fmt(overallDiff)} ({overallDiff > 0 ? "+" : ""}{overallPct}%)
+            </span>
+            <span className="text-xs text-slate-500 ml-2">{pmLabel(sorted[0])} → {pmLabel(sorted[sorted.length-1])}</span>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={150}>
+          <LineChart data={trendData} margin={{ left: 0, right: 10, top: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+            <XAxis dataKey="label" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false}/>
+            <YAxis tickFormatter={v => "$"+(v/1000000).toFixed(1)+"M"} tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} width={55}/>
+            <Tooltip content={<CustomTooltip/>}/>
+            <Line type="monotone" dataKey="total" name="Gastos" stroke="#f87171" strokeWidth={2}
+              dot={{ fill: "#f87171", r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }}/>
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Month-over-month deltas */}
+      <Card>
+        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-3">Cambios mes a mes</h3>
+        <div className="space-y-2">
+          {deltas.map((d, i) => (
+            <div key={i} className={`p-3 rounded-xl border ${d.up ? "bg-rose-950/20 border-rose-800/30" : "bg-emerald-950/20 border-emerald-800/30"}`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-slate-400">
+                  <span className="text-slate-300 font-medium">{d.from}</span>
+                  {" → "}
+                  <span className="text-slate-300 font-medium">{d.to}</span>
+                </span>
+                <span className={`text-sm font-mono font-bold ${d.up ? "text-rose-400" : "text-emerald-400"}`}>
+                  {d.up ? "+" : ""}{fmt(d.diff)}
+                  <span className="text-xs font-normal ml-1 opacity-70">({d.up?"+":""}{d.pct}%)</span>
+                </span>
+              </div>
+              {d.catChanges.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {d.catChanges.map((c, j) => (
+                    <span key={j} className={`text-xs px-2 py-0.5 rounded-full ${c.diff > 0 ? "bg-rose-900/50 text-rose-300" : "bg-emerald-900/50 text-emerald-300"}`}>
+                      {c.diff > 0 ? "↑" : "↓"} {c.name} {c.diff > 0 ? "+" : ""}{fmt(c.diff)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EXPORT PDF BUTTON
+══════════════════════════════════════════════════════════════════════ */
+function ExportPDFButton({ analysis, periods, salaries, creditos, ahorros, budget }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      // Build HTML report
+      const now = new Date().toLocaleDateString("es-CL");
+      const totalDeuda = (creditos||[]).reduce((a,c)=>a+c.cuota*(c.mesesTotal-c.mesesPagados),0);
+      const totalMensualCreditos = (creditos||[]).reduce((a,c)=>a+c.cuota,0);
+      const totalAhorrado = (ahorros||[]).reduce((a,s)=>a+s.actual,0);
+
+      const catMap = {};
+      (analysis?.expenses||[]).forEach(e=>{ catMap[e.category]=(catMap[e.category]||0)+e.amount; });
+      const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+
+      const budgetRows = Object.entries(budget||{}).map(([cat,limite])=>{
+        const gastado = catMap[cat]||0;
+        const pct = Math.min(100,Math.round((gastado/limite)*100));
+        const status = pct>=90?"🔴 Excedido":pct>=70?"🟡 Atención":"🟢 OK";
+        return `<tr><td>${cat}</td><td>$${Math.round(gastado).toLocaleString("es-CL")}</td><td>$${Math.round(limite).toLocaleString("es-CL")}</td><td>${pct}%</td><td>${status}</td></tr>`;
+      }).join("");
+
+      const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe FinanzasIA — ${now}</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; color: #1e293b; }
+  h1 { color: #059669; border-bottom: 2px solid #059669; padding-bottom: 8px; }
+  h2 { color: #334155; margin-top: 24px; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th { background: #f1f5f9; padding: 8px; text-align: left; font-size: 13px; }
+  td { padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+  .kpi { display: inline-block; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 20px; margin: 6px; text-align: center; }
+  .kpi .val { font-size: 20px; font-weight: bold; color: #059669; }
+  .kpi .lbl { font-size: 11px; color: #64748b; }
+  .summary { background: #f0fdf4; border-left: 4px solid #059669; padding: 12px; margin: 12px 0; font-size: 14px; border-radius: 4px; }
+  .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; }
+</style>
+</head>
+<body>
+<h1>💳 Informe FinanzasIA</h1>
+<p style="color:#64748b;font-size:13px">Generado el ${now}</p>
+
+${analysis ? `
+<h2>📊 Último Análisis</h2>
+<div class="summary">${analysis.summary||""}</div>
+<div>
+  <div class="kpi"><div class="val">$${Math.round(analysis.totalExpenses||0).toLocaleString("es-CL")}</div><div class="lbl">Total Gastos</div></div>
+  <div class="kpi"><div class="val">${analysis.expenses?.length||0}</div><div class="lbl">Transacciones</div></div>
+  ${analysis.salaryRatio ? `<div class="kpi"><div class="val">${analysis.salaryRatio}</div><div class="lbl">% del Sueldo</div></div>` : ""}
+</div>
+
+<h2>📂 Gastos por Categoría</h2>
+<table>
+  <tr><th>Categoría</th><th>Monto</th><th>% del Total</th></tr>
+  ${cats.map(([cat,amt])=>`<tr><td>${cat}</td><td>$${Math.round(amt).toLocaleString("es-CL")}</td><td>${analysis.totalExpenses>0?((amt/analysis.totalExpenses)*100).toFixed(1):0}%</td></tr>`).join("")}
+</table>` : ""}
+
+${budgetRows ? `
+<h2>🚦 Presupuesto Mensual</h2>
+<table>
+  <tr><th>Categoría</th><th>Gastado</th><th>Límite</th><th>Uso</th><th>Estado</th></tr>
+  ${budgetRows}
+</table>` : ""}
+
+${(creditos||[]).length > 0 ? `
+<h2>💳 Créditos y Deudas</h2>
+<div>
+  <div class="kpi"><div class="val">$${Math.round(totalDeuda).toLocaleString("es-CL")}</div><div class="lbl">Deuda Total</div></div>
+  <div class="kpi"><div class="val">$${Math.round(totalMensualCreditos).toLocaleString("es-CL")}</div><div class="lbl">Pago Mensual</div></div>
+</div>
+<table>
+  <tr><th>Nombre</th><th>Cuota</th><th>Restante</th><th>Progreso</th></tr>
+  ${(creditos||[]).map(c=>{
+    const rest=Math.max(0,c.mesesTotal-c.mesesPagados);
+    const pct=c.mesesTotal>0?Math.round((c.mesesPagados/c.mesesTotal)*100):0;
+    return `<tr><td>${c.nombre}</td><td>$${Math.round(c.cuota).toLocaleString("es-CL")}</td><td>$${Math.round(c.cuota*rest).toLocaleString("es-CL")}</td><td>${pct}%</td></tr>`;
+  }).join("")}
+</table>` : ""}
+
+${(ahorros||[]).length > 0 ? `
+<h2>🎯 Metas de Ahorro</h2>
+<div><div class="kpi"><div class="val">$${Math.round(totalAhorrado).toLocaleString("es-CL")}</div><div class="lbl">Total Ahorrado</div></div></div>
+<table>
+  <tr><th>Meta</th><th>Ahorrado</th><th>Objetivo</th><th>Avance</th></tr>
+  ${(ahorros||[]).map(a=>{
+    const pct=a.objetivo>0?Math.min(100,Math.round((a.actual/a.objetivo)*100)):0;
+    return `<tr><td>${a.emoji} ${a.nombre}</td><td>$${Math.round(a.actual).toLocaleString("es-CL")}</td><td>$${Math.round(a.objetivo).toLocaleString("es-CL")}</td><td>${pct}%</td></tr>`;
+  }).join("")}
+</table>` : ""}
+
+${(salaries||[]).length > 0 ? `
+<h2>💰 Historial de Sueldos</h2>
+<table>
+  <tr><th>Período</th><th>Sueldo Líquido</th></tr>
+  ${[...salaries].reverse().slice(0,6).map(s=>`<tr><td>${MONTHS_ES[s.month-1]} ${s.year}</td><td>$${Math.round(s.amount).toLocaleString("es-CL")}</td></tr>`).join("")}
+</table>` : ""}
+
+<div class="footer">Generado por FinanzasIA • finanzas-ia-ten.vercel.app</div>
+</body>
+</html>`;
+
+      // Open in new window and trigger print
+      const win = window.open("", "_blank");
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 500);
+    } catch(e) {
+      console.error("Export error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button onClick={handleExport} disabled={loading}
+      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 rounded-xl text-xs font-medium text-slate-300 hover:text-white transition-all">
+      {loading ? <><span className="animate-spin inline-block">⟳</span> Generando…</> : <>📥 Exportar informe PDF</>}
+    </button>
   );
 }
 
@@ -1541,47 +2405,156 @@ export default function App() {
   const [analysis,  setAnalysis] = useState(null);
   const [rawText,   setRawText]  = useState("");
   const [periods,   setPeriods]  = useState([]);
+  const [creditos,  setCreditos] = useState([]);
+  const [ahorros,   setAhorros]  = useState([]);
+  const [budget,    setBudget]   = useState({});
   const [syncing,   setSyncing]  = useState(false);
   const [syncMsg,   setSyncMsg]  = useState("");
+  const [isOffline, setIsOffline] = useState(false);
 
   const showSync = (msg, ms=2000) => { setSyncMsg(msg); setTimeout(()=>setSyncMsg(""), ms); };
 
-  const handleLogin  = (username) => setSession({ username });
+  // ── Offline cache helpers ─────────────────────────────────────────────────
+  const cacheWrite = (key, value) => { try { localStorage.setItem(`finanzas_cache_${key}`, JSON.stringify(value)); } catch {} };
+  const cacheRead  = key => { try { return JSON.parse(localStorage.getItem(`finanzas_cache_${key}`) || "null"); } catch { return null; } };
+
+  const applyCloudData = (savedPeriods, savedSalaries, savedCreditos, savedAhorros) => {
+    if (savedPeriods?.length)  {
+      setPeriods(savedPeriods);
+      const last = savedPeriods[savedPeriods.length - 1];
+      if (last?.analysis) setAnalysis(last.analysis);
+      cacheWrite("periods", savedPeriods);
+    }
+    if (savedSalaries?.length) { setSalaries(savedSalaries); cacheWrite("salaries", savedSalaries); }
+    if (savedCreditos?.length) { setCreditos(savedCreditos); cacheWrite("creditos", savedCreditos); }
+    if (savedAhorros?.length)  { setAhorros(savedAhorros);  cacheWrite("ahorros",  savedAhorros);  }
+  };
+
+  const loadOfflineCache = () => {
+    const offPeriods  = cacheRead("periods");
+    const offSalaries = cacheRead("salaries");
+    const offCreditos = cacheRead("creditos");
+    const offAhorros  = cacheRead("ahorros");
+    const offBudget   = cacheRead("budget");
+    if (offPeriods?.length)  { setPeriods(offPeriods); const last=offPeriods[offPeriods.length-1]; if(last?.analysis) setAnalysis(last.analysis); }
+    if (offSalaries?.length) setSalaries(offSalaries);
+    if (offCreditos?.length) setCreditos(offCreditos);
+    if (offAhorros?.length)  setAhorros(offAhorros);
+    if (offBudget && Object.keys(offBudget).length) setBudget(offBudget);
+    return !!(offPeriods?.length || offSalaries?.length);
+  };
+
+  const handleLogin = (username, token) => {
+    setSession({ username, token });
+    if (token) {
+      // Load offline cache immediately so data is visible while cloud loads
+      loadOfflineCache();
+      setSyncing(true);
+      Promise.all([
+        fetch(`/api/data?key=periods`,  { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=salaries`, { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=creditos`, { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=ahorros`,  { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=budget`,   { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+      ]).then(([p, s, c, a, b]) => {
+        setIsOffline(false);
+        applyCloudData(p, s, c, a);
+        if (b && Object.keys(b).length) { setBudget(b); cacheWrite("budget", b); }
+        showSync("☁ Datos cargados");
+      }).catch(e => { console.log("Login load error:", e); setIsOffline(true); showSync("📱 Modo offline"); })
+        .finally(() => setSyncing(false));
+    }
+  };
   const handleLogout = () => { clearSession(); setSession(null); };
 
-  // ── Load data from cloud on login ─────────────────────────────────────────
+  // ── Load data on mount if already logged in ─────────────────────────────
   useEffect(() => {
-    if (!session?.token) return;
+    let tok = null;
+    try { const raw = localStorage.getItem("finanzas_session"); if (raw) tok = JSON.parse(raw)?.token; } catch {}
+    if (!tok) return;
+
+    // 1. Load offline cache immediately (instant, no network needed)
+    const hadOffline = loadOfflineCache();
+    if (hadOffline) showSync("📱 Cargando…");
+
+    // 2. Try cloud — overwrites offline data with fresher version if available
     setSyncing(true);
     Promise.all([
-      loadPeriods(session.token),
-      loadSalaries(session.token),
-    ]).then(([savedPeriods, savedSalaries]) => {
-      if (savedPeriods?.length)  { setPeriods(savedPeriods);  showSync(`☁ ${savedPeriods.length} período(s) cargados`); }
-      if (savedSalaries?.length) { setSalaries(savedSalaries); }
-    }).catch(()=>{}).finally(()=>setSyncing(false));
-  }, [session?.token]);
+      fetch(`/api/data?key=periods`,  { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=salaries`, { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=creditos`, { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=ahorros`,  { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=budget`,   { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+    ]).then(([p, s, c, a, b]) => {
+      setIsOffline(false);
+      applyCloudData(p, s, c, a);
+      if (b && Object.keys(b).length) { setBudget(b); cacheWrite("budget", b); }
+      showSync("☁ Datos cargados");
+    }).catch(e => {
+      console.log("Mount load error:", e);
+      setIsOffline(true);
+      if (hadOffline) showSync("📱 Modo offline");
+    }).finally(() => setSyncing(false));
+  }, []); // run once on mount
 
-  // ── Auto-save periods to cloud when they change ───────────────────────────
+  // ── Auto-save periods ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!session?.token || periods.length === 0) return;
+    if (periods.length === 0) return;
+    cacheWrite("periods", periods);                             // offline mirror — always
+    if (!session?.token) return;
     const timer = setTimeout(async () => {
-      try {
-        await savePeriods(periods, session.token);
-        showSync("☁ Guardado");
-      } catch {}
-    }, 1000); // debounce 1s
+      try { await savePeriods(periods, session.token); showSync("☁ Guardado"); }
+      catch(e) { console.log("Save periods error:", e); }
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [periods, session?.token]);
+  }, [periods]);
 
-  // ── Auto-save salaries to cloud when they change ──────────────────────────
+  // ── Auto-save salaries ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!session?.token || salaries.length === 0) return;
+    if (salaries.length === 0) return;
+    cacheWrite("salaries", salaries);
+    if (!session?.token) return;
     const timer = setTimeout(async () => {
-      try { await saveSalaries(salaries, session.token); } catch {}
-    }, 1000);
+      try { await saveSalaries(salaries, session.token); } catch(e) { console.log("Save salaries error:", e); }
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [salaries, session?.token]);
+  }, [salaries]);
+
+  // ── Auto-save creditos ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (creditos.length === 0) return;
+    cacheWrite("creditos", creditos);
+    if (!session?.token) return;
+    const tok = session.token;
+    const timer = setTimeout(() => {
+      fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"creditos",value:creditos}) });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [creditos, session?.token]);
+
+  // ── Auto-save ahorros ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (ahorros.length === 0) return;
+    cacheWrite("ahorros", ahorros);
+    if (!session?.token) return;
+    const tok = session.token;
+    const timer = setTimeout(() => {
+      fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"ahorros",value:ahorros}) });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [ahorros, session?.token]);
+
+  // ── Auto-save budget ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (Object.keys(budget).length === 0) return;
+    cacheWrite("budget", budget);
+    if (!session?.token) return;
+    const tok = session.token;
+    const timer = setTimeout(() => {
+      fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"budget",value:budget}) });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [budget, session?.token]);
 
   const handleAnalysis = (result, fileName) => {
     setAnalysis(result);
@@ -1616,6 +2589,8 @@ export default function App() {
     { id:"analysis",   label:"📊 Análisis" },
     { id:"multi",      label:`📅 Períodos${periods.length>0?" ("+periods.length+")":""}` },
     { id:"salary",     label:"💰 Sueldos" },
+    { id:"creditos",   label:"💳 Créditos" },
+    { id:"ahorros",    label:"🎯 Ahorros" },
     { id:"projection", label:"🏠 Casa" },
   ];
 
@@ -1656,6 +2631,13 @@ export default function App() {
               {syncMsg}
             </span>
           )}
+          {isOffline && !syncing && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-950/60 border border-amber-800/40 rounded-full text-xs text-amber-400" title="Sin conexión — mostrando datos guardados localmente">
+              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"/>
+              📱 Offline
+            </span>
+          )}
+          <ExportPDFButton analysis={analysis} periods={periods} salaries={salaries} creditos={creditos} ahorros={ahorros} budget={budget}/>
           {analysis && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-950/60 border border-emerald-800/40 rounded-full text-xs text-emerald-400">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>
@@ -1672,7 +2654,7 @@ export default function App() {
       </div>
 
       <div className="px-6 max-w-4xl mx-auto">
-        <div className="grid grid-cols-5 gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1 mb-5">
+        <div className="grid grid-cols-7 gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1 mb-5">
           {tabs.map((t)=>(
             <button key={t.id} onClick={()=>setTab(t.id)}
               className={`py-2 px-1 rounded-xl text-xs font-medium transition-all text-center ${tab===t.id?"bg-emerald-700 text-white shadow":"text-slate-500 hover:text-slate-300"}`}>
@@ -1682,12 +2664,463 @@ export default function App() {
         </div>
         <div className="pb-12">
           {tab==="upload"     && <UploadTab salaries={salaries} onAnalysis={handleAnalysis} rawText={rawText} setRawText={setRawText}/>}
-          {tab==="analysis"   && <AnalysisTab analysis={analysis}/>}
-          {tab==="multi"      && <MultiAnalysisTab periods={periods} onRemove={handleRemovePeriod}/>}
+          {tab==="analysis"   && <AnalysisTab analysis={analysis} budget={budget} setBudget={setBudget}/>}
+          {tab==="multi"      && <MultiAnalysisTab periods={periods} salaries={salaries} onRemove={handleRemovePeriod}/>}
           {tab==="salary"     && <SalaryTab salaries={salaries} setSalaries={setSalaries}/>}
-          {tab==="projection" && <ProjectionTab salaries={salaries} analysis={analysis}/>}
+          {tab==="creditos"   && <CreditosTab creditos={creditos} setCreditos={setCreditos}/>}
+          {tab==="ahorros"    && <AhorrosTab ahorros={ahorros} setAhorros={setAhorros}/>}
+          {tab==="projection" && <ProjectionTab salaries={salaries} analysis={analysis} periods={periods} creditos={creditos} ahorros={ahorros}/>}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CRÉDITOS TAB
+══════════════════════════════════════════════════════════════════════ */
+function CreditosTab({ creditos, setCreditos }) {
+  const now = new Date();
+  const [nombre,    setNombre]    = useState("");
+  const [montoTotal,setMontoTotal]= useState("");
+  const [cuota,     setCuota]     = useState("");
+  const [mesesTotal,setMesesTotal]= useState("");
+  const [mesesPagados,setMesesPagados] = useState("");
+  const [tasa,      setTasa]      = useState("");
+  const [tipo,      setTipo]      = useState("Consumo");
+  const [editing,   setEditing]   = useState(null);
+
+  const tipoOpts = ["Consumo","Hipotecario","Auto","Tarjeta","Educación","Otro"];
+
+  const handleAdd = () => {
+    const obj = {
+      id: Date.now(),
+      nombre: nombre.trim(),
+      montoTotal: parseFloat(String(montoTotal).replace(/\./g,"").replace(",",".")) || 0,
+      cuota:      parseFloat(String(cuota).replace(/\./g,"").replace(",",".")) || 0,
+      mesesTotal: parseInt(mesesTotal) || 0,
+      mesesPagados: parseInt(mesesPagados) || 0,
+      tasa:       parseFloat(String(tasa).replace(",",".")) || 0,
+      tipo,
+    };
+    if (!obj.nombre || !obj.cuota) return;
+    setCreditos(prev => editing !== null
+      ? prev.map(c => c.id === editing ? obj : c)
+      : [...prev, obj]
+    );
+    setNombre(""); setMontoTotal(""); setCuota(""); setMesesTotal("");
+    setMesesPagados(""); setTasa(""); setTipo("Consumo"); setEditing(null);
+  };
+
+  const handleEdit = (c) => {
+    setNombre(c.nombre); setMontoTotal(String(c.montoTotal));
+    setCuota(String(c.cuota)); setMesesTotal(String(c.mesesTotal));
+    setMesesPagados(String(c.mesesPagados)); setTasa(String(c.tasa));
+    setTipo(c.tipo); setEditing(c.id);
+  };
+
+  const totalDeuda    = creditos.reduce((a,c) => a + (c.cuota * (c.mesesTotal - c.mesesPagados)), 0);
+  const totalMensual  = creditos.reduce((a,c) => a + c.cuota, 0);
+
+  return (
+    <div className="space-y-5">
+      {/* Form */}
+      <Card>
+        <h2 className="text-base font-semibold text-slate-200 mb-4">
+          {editing !== null ? "✏️ Editar Crédito" : "➕ Agregar Crédito / Deuda"}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="col-span-2">
+            <label className="text-xs text-slate-400 mb-1 block">Nombre del crédito</label>
+            <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Crédito auto BCI"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Tipo</label>
+            <select value={tipo} onChange={e=>setTipo(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600">
+              {tipoOpts.map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Tasa interés anual (%)</label>
+            <input value={tasa} onChange={e=>setTasa(e.target.value)} placeholder="Ej: 12.5"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Monto total del crédito ($)</label>
+            <input value={montoTotal} onChange={e=>setMontoTotal(e.target.value)} placeholder="Ej: 5.000.000"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Cuota mensual ($)</label>
+            <input value={cuota} onChange={e=>setCuota(e.target.value)} placeholder="Ej: 150.000"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Total de cuotas</label>
+            <input type="number" value={mesesTotal} onChange={e=>setMesesTotal(e.target.value)} placeholder="Ej: 48"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Cuotas ya pagadas</label>
+            <input type="number" value={mesesPagados} onChange={e=>setMesesPagados(e.target.value)} placeholder="Ej: 12"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleAdd} disabled={!nombre||!cuota}
+            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-sm font-semibold text-white transition-all">
+            {editing !== null ? "Guardar cambios" : "+ Agregar"}
+          </button>
+          {editing !== null && (
+            <button onClick={()=>{setEditing(null);setNombre("");setCuota("");setMesesTotal("");setMesesPagados("");setMontoTotal("");setTasa("");}}
+              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm text-slate-300 transition-all">
+              Cancelar
+            </button>
+          )}
+        </div>
+      </Card>
+
+      {/* KPIs */}
+      {creditos.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <KpiCard label="Deuda total restante" value={fmt(totalDeuda)}   accent="rose"/>
+          <KpiCard label="Pago mensual total"   value={fmt(totalMensual)} accent="amber"/>
+        </div>
+      )}
+
+      {/* Credit list */}
+      {creditos.length === 0 ? (
+        <Card className="text-center py-12">
+          <div className="text-4xl mb-3">💳</div>
+          <p className="text-slate-500 text-sm">No hay créditos registrados</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {creditos.map(c => {
+            const restantes  = Math.max(0, c.mesesTotal - c.mesesPagados);
+            const deudaRest  = c.cuota * restantes;
+            const pct        = c.mesesTotal > 0 ? Math.round((c.mesesPagados / c.mesesTotal) * 100) : 0;
+            const mesesFin   = new Date(); mesesFin.setMonth(mesesFin.getMonth() + restantes);
+            const colorBar   = pct >= 75 ? "#34d399" : pct >= 40 ? "#fbbf24" : "#f87171";
+            return (
+              <Card key={c.id}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-200">{c.nombre}</p>
+                    <p className="text-xs text-slate-500">{c.tipo}{c.tasa > 0 ? ` · ${c.tasa}% anual` : ""}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={()=>handleEdit(c)} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">✏️</button>
+                    <button onClick={()=>setCreditos(prev=>prev.filter(x=>x.id!==c.id))} className="text-xs text-slate-500 hover:text-rose-400 transition-colors">✕</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                  <div className="bg-slate-800/60 rounded-xl p-2">
+                    <p className="text-xs text-slate-500 mb-0.5">Cuota</p>
+                    <p className="text-sm font-mono font-bold text-slate-200">{fmt(c.cuota)}</p>
+                  </div>
+                  <div className="bg-slate-800/60 rounded-xl p-2">
+                    <p className="text-xs text-slate-500 mb-0.5">Restante</p>
+                    <p className="text-sm font-mono font-bold text-rose-400">{fmt(deudaRest)}</p>
+                  </div>
+                  <div className="bg-slate-800/60 rounded-xl p-2">
+                    <p className="text-xs text-slate-500 mb-0.5">Término</p>
+                    <p className="text-sm font-bold text-slate-200">{restantes > 0 ? `${MONTHS_ES[mesesFin.getMonth()].slice(0,3)} ${mesesFin.getFullYear()}` : "✅ Pagado"}</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <span>{c.mesesPagados} de {c.mesesTotal} cuotas</span>
+                    <span>{pct}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{width:`${pct}%`, background: colorBar}}/>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── AHORRO CARD (componente separado para evitar useState en .map()) ── */
+function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
+  const [abonando, setAbonando] = useState(false);
+  const [abonoVal, setAbonoVal] = useState("");
+
+  const pct      = a.objetivo > 0 ? Math.min(100, Math.round((a.actual / a.objetivo) * 100)) : 0;
+  const falta    = Math.max(0, a.objetivo - a.actual);
+  const mesesFin = a.aporte > 0 ? Math.ceil(falta / a.aporte) : null;
+  const colorBar = pct >= 100 ? "#34d399" : pct >= 60 ? "#4ade80" : pct >= 30 ? "#fbbf24" : "#f87171";
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{a.emoji}</span>
+          <div>
+            <p className="text-sm font-semibold text-slate-200">{a.nombre}</p>
+            {a.fechaMeta && <p className="text-xs text-slate-500">Meta: {new Date(a.fechaMeta).toLocaleDateString("es-CL")}</p>}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => onEdit(a)} className="text-xs text-slate-500 hover:text-slate-300">✏️</button>
+          <button onClick={() => onDelete(a.id)} className="text-xs text-slate-500 hover:text-rose-400">✕</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+        <div className="bg-slate-800/60 rounded-xl p-2">
+          <p className="text-xs text-slate-500 mb-0.5">Ahorrado</p>
+          <p className="text-sm font-mono font-bold text-emerald-400">{fmt(a.actual)}</p>
+        </div>
+        <div className="bg-slate-800/60 rounded-xl p-2">
+          <p className="text-xs text-slate-500 mb-0.5">Objetivo</p>
+          <p className="text-sm font-mono font-bold text-slate-200">{fmt(a.objetivo)}</p>
+        </div>
+        <div className="bg-slate-800/60 rounded-xl p-2">
+          <p className="text-xs text-slate-500 mb-0.5">Faltan</p>
+          <p className="text-sm font-mono font-bold text-amber-400">{fmt(falta)}</p>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <div className="flex justify-between text-xs text-slate-500 mb-1">
+          <span>{pct}% completado</span>
+          {mesesFin !== null && falta > 0 && <span>~{mesesFin} meses restantes</span>}
+          {pct >= 100 && <span className="text-emerald-400">✅ Meta alcanzada</span>}
+        </div>
+        <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: colorBar }}/>
+        </div>
+      </div>
+
+      {/* ── Proyección de ahorro ──────────────────────────────────────── */}
+      {pct < 100 && mesesFin !== null && (() => {
+        const hoy        = new Date();
+        const estimada   = new Date(hoy.getFullYear(), hoy.getMonth() + mesesFin, hoy.getDate());
+        const hasMeta    = !!a.fechaMeta;
+        const metaDate   = hasMeta ? new Date(a.fechaMeta) : null;
+        const onTrack    = hasMeta ? estimada <= metaDate : true;
+        const mesesMeta  = hasMeta ? Math.round((metaDate - hoy) / (30.44 * 24 * 3600 * 1000)) : null;
+        const diffMeses  = hasMeta ? Math.abs(mesesFin - mesesMeta) : null;
+
+        // Mini timeline: posición actual como % entre hoy y estimada
+        const totalSpan  = hasMeta ? Math.max(mesesFin, mesesMeta) : mesesFin;
+        const pctEstimada = hasMeta ? Math.round((mesesFin / totalSpan) * 100) : 100;
+        const pctMeta     = hasMeta ? Math.round((mesesMeta / totalSpan) * 100) : 100;
+
+        return (
+          <div className="mb-3 p-3 bg-slate-800/40 rounded-xl border border-slate-700/40">
+            <p className="text-xs text-slate-500 mb-2 uppercase tracking-widest">Proyección</p>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-xs text-slate-400">Fecha estimada</p>
+                <p className="text-sm font-medium text-slate-200">
+                  {estimada.toLocaleDateString("es-CL", { month: "short", year: "numeric" })}
+                </p>
+              </div>
+              {hasMeta && (
+                <div className="text-right">
+                  <p className={`text-xs font-semibold ${onTrack ? "text-emerald-400" : "text-rose-400"}`}>
+                    {onTrack ? "✅ En camino" : "⚠️ Retrasado"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {onTrack
+                      ? `${diffMeses} mes${diffMeses !== 1 ? "es" : ""} antes de la meta`
+                      : `${diffMeses} mes${diffMeses !== 1 ? "es" : ""} después de la meta`}
+                  </p>
+                </div>
+              )}
+            </div>
+            {/* Timeline visual */}
+            <div className="relative h-2 bg-slate-700 rounded-full overflow-visible">
+              <div className="absolute inset-y-0 left-0 bg-emerald-600/40 rounded-full" style={{ width: `${Math.min(100, pctEstimada)}%` }}/>
+              {/* Marcador fecha estimada */}
+              <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900 z-10"
+                style={{ left: `calc(${Math.min(98, pctEstimada)}% - 6px)` }}
+                title={`Estimada: ${estimada.toLocaleDateString("es-CL")}`}/>
+              {/* Marcador fecha meta */}
+              {hasMeta && (
+                <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-amber-400 border-2 border-slate-900 z-10"
+                  style={{ left: `calc(${Math.min(98, pctMeta)}% - 6px)` }}
+                  title={`Meta: ${metaDate.toLocaleDateString("es-CL")}`}/>
+              )}
+            </div>
+            <div className="flex justify-between text-xs text-slate-600 mt-1.5">
+              <span>Hoy</span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/>Estimado</span>
+                {hasMeta && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>Meta</span>}
+              </div>
+            </div>
+            {a.aporte > 0 && (
+              <p className="text-xs text-slate-600 mt-1.5">
+                Aportando <span className="text-slate-400">{fmt(a.aporte)}/mes</span> · Faltan <span className="text-slate-400">{fmt(falta)}</span>
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
+      {pct < 100 && (
+        abonando ? (
+          <div className="flex gap-2">
+            <input value={abonoVal} onChange={e => setAbonoVal(e.target.value)} placeholder="Monto a abonar"
+              className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+            <button onClick={() => {
+              const v = parseFloat(String(abonoVal).replace(/\./g, "").replace(",", "."));
+              if (v > 0) { onAbonar(a.id, v); setAbonoVal(""); setAbonando(false); }
+            }} className="px-3 py-1.5 bg-emerald-600 rounded-xl text-xs text-white font-medium">✓</button>
+            <button onClick={() => setAbonando(false)} className="px-3 py-1.5 bg-slate-700 rounded-xl text-xs text-slate-300">✕</button>
+          </div>
+        ) : (
+          <button onClick={() => setAbonando(true)}
+            className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs text-slate-400 hover:text-slate-200 transition-all">
+            + Registrar abono
+          </button>
+        )
+      )}
+    </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   AHORROS TAB
+══════════════════════════════════════════════════════════════════════ */
+function AhorrosTab({ ahorros, setAhorros }) {
+  const [nombre,    setNombre]    = useState("");
+  const [objetivo,  setObjetivo]  = useState("");
+  const [actual,    setActual]    = useState("");
+  const [aporte,    setAporte]    = useState("");
+  const [fechaMeta, setFechaMeta] = useState("");
+  const [emoji,     setEmoji]     = useState("🏠");
+  const [editing,   setEditing]   = useState(null);
+
+  const emojiOpts = ["🏠","🚗","✈️","🎓","👶","💍","💻","🏖️","🏥","📦","💰","🎯"];
+
+  const handleAdd = () => {
+    const obj = {
+      id: Date.now(),
+      nombre: nombre.trim(),
+      objetivo: parseFloat(String(objetivo).replace(/\./g,"").replace(",",".")) || 0,
+      actual:   parseFloat(String(actual).replace(/\./g,"").replace(",",".")) || 0,
+      aporte:   parseFloat(String(aporte).replace(/\./g,"").replace(",",".")) || 0,
+      fechaMeta,
+      emoji,
+    };
+    if (!obj.nombre || !obj.objetivo) return;
+    setAhorros(prev => editing !== null
+      ? prev.map(a => a.id === editing ? obj : a)
+      : [...prev, obj]
+    );
+    setNombre(""); setObjetivo(""); setActual(""); setAporte(""); setFechaMeta(""); setEmoji("🏠"); setEditing(null);
+  };
+
+  const handleAbonar = (id, extra) => {
+    setAhorros(prev => prev.map(a => a.id === id ? {...a, actual: a.actual + extra} : a));
+  };
+
+  const handleEdit = (a) => {
+    setNombre(a.nombre); setObjetivo(String(a.objetivo)); setActual(String(a.actual));
+    setAporte(String(a.aporte)); setFechaMeta(a.fechaMeta||""); setEmoji(a.emoji||"🎯"); setEditing(a.id);
+  };
+
+  const totalAhorrado = ahorros.reduce((s,a)=>s+a.actual,0);
+  const totalObjetivo = ahorros.reduce((s,a)=>s+a.objetivo,0);
+
+  return (
+    <div className="space-y-5">
+      {/* Form */}
+      <Card>
+        <h2 className="text-base font-semibold text-slate-200 mb-4">
+          {editing !== null ? "✏️ Editar Meta" : "➕ Nueva Meta de Ahorro"}
+        </h2>
+        {/* Emoji picker */}
+        <div className="mb-3">
+          <label className="text-xs text-slate-400 mb-1 block">Ícono</label>
+          <div className="flex flex-wrap gap-2">
+            {emojiOpts.map(e=>(
+              <button key={e} onClick={()=>setEmoji(e)}
+                className={`w-9 h-9 rounded-xl text-lg transition-all ${emoji===e?"bg-emerald-600":"bg-slate-800 hover:bg-slate-700"}`}>
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="col-span-2">
+            <label className="text-xs text-slate-400 mb-1 block">Nombre de la meta</label>
+            <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Pie para la casa"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Monto objetivo ($)</label>
+            <input value={objetivo} onChange={e=>setObjetivo(e.target.value)} placeholder="Ej: 10.000.000"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Ya ahorrado ($)</label>
+            <input value={actual} onChange={e=>setActual(e.target.value)} placeholder="Ej: 2.000.000"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Aporte mensual ($)</label>
+            <input value={aporte} onChange={e=>setAporte(e.target.value)} placeholder="Ej: 300.000"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Fecha límite (opcional)</label>
+            <input type="date" value={fechaMeta} onChange={e=>setFechaMeta(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleAdd} disabled={!nombre||!objetivo}
+            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-sm font-semibold text-white transition-all">
+            {editing !== null ? "Guardar cambios" : "+ Agregar meta"}
+          </button>
+          {editing !== null && (
+            <button onClick={()=>{setEditing(null);setNombre("");setObjetivo("");setActual("");setAporte("");setFechaMeta("");setEmoji("🏠");}}
+              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm text-slate-300 transition-all">
+              Cancelar
+            </button>
+          )}
+        </div>
+      </Card>
+
+      {/* KPIs */}
+      {ahorros.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <KpiCard label="Total ahorrado"  value={fmt(totalAhorrado)} accent="emerald"/>
+          <KpiCard label="Total objetivo"  value={fmt(totalObjetivo)} accent="sky"/>
+        </div>
+      )}
+
+      {/* Goals list */}
+      {ahorros.length === 0 ? (
+        <Card className="text-center py-12">
+          <div className="text-4xl mb-3">🎯</div>
+          <p className="text-slate-500 text-sm">No hay metas de ahorro registradas</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {ahorros.map(a => (
+            <AhorroCard
+              key={a.id}
+              a={a}
+              onAbonar={handleAbonar}
+              onEdit={handleEdit}
+              onDelete={id => setAhorros(prev => prev.filter(x => x.id !== id))}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -7,16 +7,22 @@
 const SESSION_KEY = "finanzas_session";
 
 export function saveSession(token, username) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, savedAt: Date.now() }));
+  // Use localStorage so session persists across tabs and refreshes
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, savedAt: Date.now() }));
+  } catch {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, savedAt: Date.now() }));
+  }
 }
 
 export function loadSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
     // Client-side expiry check: 8 hours
     if (Date.now() - s.savedAt > 8 * 60 * 60 * 1000) {
+      localStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(SESSION_KEY);
       return null;
     }
@@ -25,6 +31,7 @@ export function loadSession() {
 }
 
 export function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
 }
 
@@ -125,7 +132,9 @@ export async function secureAnthropicFetch(body) {
 
     if (res.status === 401) {
       clearSession();
-      throw new Error("Sesión expirada. Por favor inicia sesión nuevamente.");
+      // Force page reload to show login screen
+      window.location.reload();
+      throw new Error("Sesión expirada. Redirigiendo al login...");
     }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -149,46 +158,59 @@ export async function secureAnthropicFetch(body) {
 const IS_LOCAL = window.location.hostname === "localhost";
 
 async function cloudSave(key, value, token) {
+  const tok = token || getSessionToken();
+  console.log(`[cloudSave] key=${key} tok=${tok ? tok.slice(0,10)+"..." : "null"} IS_LOCAL=${IS_LOCAL}`);
+  if (!tok) { console.log("[cloudSave] no token, aborting"); return; }
   if (IS_LOCAL) {
-    // Local fallback: use localStorage
-    try { localStorage.setItem(`finanzas_${key}`, JSON.stringify(value)); } catch {}
+    try { localStorage.setItem(`finanzas_${key}`, JSON.stringify(value)); console.log("[cloudSave] saved to localStorage"); } catch {}
     return;
   }
-  await fetch("/api/data", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-session-token": token },
-    body: JSON.stringify({ key, value }),
-  });
+  try {
+    const res = await fetch("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-session-token": tok },
+      body: JSON.stringify({ key, value }),
+    });
+    console.log("[cloudSave] response status:", res.status);
+  } catch(e) { console.log("cloudSave error:", e); }
 }
 
 async function cloudLoad(key, token) {
+  const tok = token || getSessionToken();
+  console.log(`[cloudLoad] key=${key} tok=${tok ? tok.slice(0,10)+"..." : "null"} IS_LOCAL=${IS_LOCAL}`);
   if (IS_LOCAL) {
-    // Local fallback: use localStorage
     try {
       const raw = localStorage.getItem(`finanzas_${key}`);
+      console.log(`[cloudLoad] localStorage result:`, raw ? raw.slice(0,50) : "null");
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   }
-  const res = await fetch(`/api/data?key=${key}`, {
-    headers: { "x-session-token": token },
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.value || null;
+  if (!tok) { console.log("[cloudLoad] no token, aborting"); return null; }
+  try {
+    const res = await fetch(`/api/data?key=${key}`, {
+      headers: { "x-session-token": tok },
+    });
+    console.log(`[cloudLoad] response status:`, res.status);
+    if (!res.ok) { console.log("[cloudLoad] response not ok"); return null; }
+    const data = await res.json();
+    console.log(`[cloudLoad] data.value type:`, typeof data.value, Array.isArray(data.value) ? `length=${data.value.length}` : "");
+    return data.value || null;
+  } catch(e) { console.log("cloudLoad error:", e); return null; }
 }
 
 export async function savePeriods(periods, token) {
-  // Strip raw text before saving to keep size small
   const slim = periods.map(p => ({
-    label:     p.label,
-    addedAt:   p.addedAt,
-    analysis:  {
-      expenses:       p.analysis.expenses,
-      totalExpenses:  p.analysis.totalExpenses,
-      summary:        p.analysis.summary,
-      topCategories:  p.analysis.topCategories,
-      recommendations:p.analysis.recommendations,
-      salaryRatio:    p.analysis.salaryRatio,
+    label:    p.label,
+    addedAt:  p.addedAt,
+    analysis: {
+      expenses:        p.analysis.expenses,
+      totalExpenses:   p.analysis.totalExpenses,
+      summary:         p.analysis.summary,
+      topCategories:   p.analysis.topCategories,
+      recommendations: p.analysis.recommendations,
+      salaryRatio:     p.analysis.salaryRatio,
+      banco:           p.analysis.banco,
+      periodoMes:      p.analysis.periodoMes,
     }
   }));
   await cloudSave("periods", slim, token);
