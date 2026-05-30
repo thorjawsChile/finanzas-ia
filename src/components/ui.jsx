@@ -4,12 +4,13 @@ import { fmt } from "../utils.js";
 
 export function Card({ children, className = "", glow = false }) {
   return (
-    <div className={`rounded-2xl p-6 transition-all ${className}`}
+    <div className={`rounded-2xl p-7 transition-all ${className}`}
       style={{
         background:"#1a1a2e",
+        border:"1px solid #7c3aed",
         boxShadow: glow
-          ? "0 0 0 1px rgba(124,58,237,0.45), 0 8px 32px rgba(124,58,237,0.2), 0 0 60px rgba(6,182,212,0.05)"
-          : "0 0 0 1px rgba(124,58,237,0.13), 0 4px 20px rgba(0,0,0,0.35)"
+          ? "0 0 0 1px #7c3aed, 0 8px 36px rgba(124,58,237,0.45), 0 0 60px rgba(6,182,212,0.12)"
+          : "0 4px 28px rgba(124,58,237,0.3), 0 8px 32px rgba(0,0,0,0.4)"
       }}>
       {children}
     </div>
