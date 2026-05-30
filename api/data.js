@@ -15,23 +15,27 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-// ── Session validation ────────────────────────────────────────────────────────
+// ── Simple token validation
 function getUsername(req) {
-  const token  = req.headers["x-session-token"];
-  const secret = process.env.SESSION_SECRET;
-  if (!token || !secret) return null;
+  const token = req.headers["x-session-token"];
+  if (!token) return null;
   try {
-    const decoded          = Buffer.from(token, "base64").toString("utf8");
-    const [user, ts, hmac] = decoded.split(":");
-    if (!user || !ts || !hmac) return null;
-    if (Date.now() - parseInt(ts, 10) > 8 * 60 * 60 * 1000) return null;
-    const expected = crypto.createHmac("sha256", secret).update(`${user}:${ts}`).digest("hex");
-    const valid = crypto.timingSafeEqual(Buffer.from(hmac, "hex"), Buffer.from(expected, "hex"));
-    return valid ? user : null;
+    const decoded  = Buffer.from(token, "base64").toString("utf8");
+    const colonIdx = decoded.indexOf(":");
+    if (colonIdx < 0) return null;
+    const username = decoded.slice(0, colonIdx);
+    const password = decoded.slice(colonIdx + 1);
+    const validUsers = {
+      [process.env.USER1_NAME]: process.env.USER1_PASS,
+      [process.env.USER2_NAME]: process.env.USER2_PASS,
+    };
+    const storedPass = validUsers[username];
+    if (!storedPass || storedPass !== password) return null;
+    return username;
   } catch { return null; }
 }
 
-const ALLOWED_KEYS = ["periods", "salaries"];
+const ALLOWED_KEYS = ["periods", "salaries", "creditos", "ahorros", "budget"];
 const MAX_SIZE_KB  = 512;
 
 export default async function handler(req, res) {
@@ -46,7 +50,11 @@ export default async function handler(req, res) {
     if (!ALLOWED_KEYS.includes(key))
       return res.status(400).json({ error: "Clave no permitida." });
     try {
-      const value = await redis.get(`user:${username}:${key}`);
+      let value = await redis.get(`user:${username}:${key}`);
+      // Upstash may return stringified JSON — parse it
+      if (typeof value === "string") {
+        try { value = JSON.parse(value); } catch {}
+      }
       return res.status(200).json({ value: value || null });
     } catch (err) {
       return res.status(500).json({ error: "Error al leer: " + err.message });
@@ -62,7 +70,9 @@ export default async function handler(req, res) {
     if (sizeKB > MAX_SIZE_KB)
       return res.status(413).json({ error: `Datos muy grandes (${sizeKB.toFixed(0)}KB).` });
     try {
-      await redis.set(`user:${username}:${key}`, value);
+      // Always store as JSON string for consistent retrieval
+      const stored = typeof value === "string" ? value : JSON.stringify(value);
+      await redis.set(`user:${username}:${key}`, stored);
       return res.status(200).json({ ok: true });
     } catch (err) {
       return res.status(500).json({ error: "Error al guardar: " + err.message });
