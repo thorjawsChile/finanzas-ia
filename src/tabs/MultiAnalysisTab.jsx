@@ -131,7 +131,8 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
             <button
               onClick={()=>handleAiAnalysis(salaries)}
               disabled={aiLoading}
-              className="shrink-0 ml-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2">
+              className="shrink-0 ml-4 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2"
+              style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)",boxShadow:"0 0 15px rgba(124,58,237,0.4)",opacity:aiLoading?0.45:1,cursor:aiLoading?"not-allowed":"pointer"}}>
               {aiLoading ? <><span className="animate-spin inline-block">⟳</span> Analizando…</> : <>✦ Analizar todo</>}
             </button>
           </div>

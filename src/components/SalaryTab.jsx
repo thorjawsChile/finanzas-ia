@@ -121,7 +121,8 @@ export function SalaryTab({ salaries, setSalaries }) {
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
           </div>
           <button onClick={handleAdd} disabled={!amount}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all">
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+            style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)",boxShadow:"0 0 15px rgba(124,58,237,0.4)",opacity:!amount?0.45:1,cursor:!amount?"not-allowed":"pointer"}}>
             + Agregar Sueldo
           </button>
         </Card>
@@ -243,7 +244,8 @@ export function SalaryTab({ salaries, setSalaries }) {
             )}
 
             <button onClick={handleAddFromPayslip}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold text-white transition-all">
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+              style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)",boxShadow:"0 0 15px rgba(124,58,237,0.4)"}}>
               ✓ Agregar {fmt(payslip.liquidoPagar)} al historial
             </button>
           </Card>

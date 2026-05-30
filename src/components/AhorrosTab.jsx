@@ -130,7 +130,7 @@ function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
             <button onClick={() => {
               const v = parseFloat(String(abonoVal).replace(/\./g, "").replace(",", "."));
               if (v > 0) { onAbonar(a.id, v); setAbonoVal(""); setAbonando(false); }
-            }} className="px-3 py-1.5 bg-emerald-600 rounded-xl text-xs text-white font-medium">✓</button>
+            }} className="px-3 py-1.5 rounded-xl text-xs text-white font-medium" style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)"}}>✓</button>
             <button onClick={() => setAbonando(false)} className="px-3 py-1.5 bg-slate-700 rounded-xl text-xs text-slate-300">✕</button>
           </div>
         ) : (
@@ -236,7 +236,8 @@ export function AhorrosTab({ ahorros, setAhorros }) {
         </div>
         <div className="flex gap-2">
           <button onClick={handleAdd} disabled={!nombre||!objetivo}
-            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-sm font-semibold text-white transition-all">
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+            style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)",boxShadow:"0 0 15px rgba(124,58,237,0.4)",opacity:(!nombre||!objetivo)?0.45:1,cursor:(!nombre||!objetivo)?"not-allowed":"pointer"}}>
             {editing !== null ? "Guardar cambios" : "+ Agregar meta"}
           </button>
           {editing !== null && (
