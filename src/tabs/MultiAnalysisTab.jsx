@@ -153,16 +153,18 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Card>
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Distribución acumulada</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                    outerRadius={80} innerRadius={42} paddingAngle={1} minAngle={4}
-                    label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}>
-                    {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip/>}/>
-                </PieChart>
-              </ResponsiveContainer>
+              <div style={{width:"100%",height:220}}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart width={220} height={220}>
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                      outerRadius={80} innerRadius={42} paddingAngle={2}
+                      label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}>
+                      {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip/>}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               <div className="flex flex-wrap gap-2 mt-3">
                 {pieData.map((e,i)=>(
                   <div key={i} className="flex items-center gap-1.5 text-xs font-medium">
