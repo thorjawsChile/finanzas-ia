@@ -124,6 +124,7 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
             <PieChart width={220} height={220} margin={{top:0,right:0,bottom:0,left:0}}>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={82} innerRadius={44}
                 paddingAngle={0} startAngle={90} endAngle={-270}
+                isAnimationActive={false} activeIndex={-1}
                 label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
                   if (percent <= 0.06) return null;
                   const RADIAN = Math.PI / 180;
@@ -140,7 +141,7 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
                 strokeWidth={0}>
                 {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
               </Pie>
-              <Tooltip content={<CustomTooltip/>}/>
+              <Tooltip content={<CustomTooltip/>} isAnimationActive={false}/>
             </PieChart>
           </ResponsiveContainer>
         </div>
