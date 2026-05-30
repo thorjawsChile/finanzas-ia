@@ -217,12 +217,13 @@ export default function App() {
         fontFamily:"'Inter', system-ui, sans-serif",
       }}
     >
-      <div className="px-6 pt-8 pb-4 max-w-4xl mx-auto">
+      <div style={{background:"linear-gradient(180deg,#1a0533 0%,rgba(26,10,46,0.55) 60%,transparent 100%)"}}>
+      <div className="px-6 pt-8 pb-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 4px 20px rgba(124,58,237,0.45)"}}>💳</div>
             <div>
-              <h1 className="text-xl font-bold text-slate-100 leading-none">FinanzasIA</h1>
+              <h1 className="text-xl font-bold leading-none" style={{background:"linear-gradient(135deg,#a78bfa 0%,#06b6d4 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>FinanzasIA</h1>
               <p className="text-xs text-slate-500 mt-0.5">Análisis inteligente de gastos</p>
               {DEMO_MODE && <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">MODO DEMO</span>}
             </div>
@@ -268,13 +269,14 @@ export default function App() {
           )}
         </div>
       </div>
+      </div>
 
       <div className="px-6 max-w-4xl mx-auto">
         <div className="grid grid-cols-7 gap-1 rounded-2xl p-1 mb-5" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.18)"}}>
           {tabs.map((t)=>(
             <button key={t.id} onClick={()=>setTab(t.id)}
               className={`py-2 px-1 rounded-xl text-xs font-medium transition-all text-center ${tab===t.id?"text-white":"text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
-              style={tab===t.id?{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 2px 12px rgba(124,58,237,0.4)"}:{}}>
+              style={tab===t.id?{background:"linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%)",boxShadow:"0 2px 14px rgba(124,58,237,0.45)"}:{}}>
               {t.label}
             </button>
           ))}

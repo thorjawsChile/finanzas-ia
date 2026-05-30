@@ -4,8 +4,13 @@ import { fmt } from "../utils.js";
 
 export function Card({ children, className = "", glow = false }) {
   return (
-    <div className={`rounded-2xl border p-5 transition-all ${glow ? "border-violet-700/30" : "border-slate-800"} ${className}`}
-      style={{background:"#1a1a2e",boxShadow:glow?"0 0 30px rgba(124,58,237,0.12)":undefined}}>
+    <div className={`rounded-2xl p-6 transition-all ${className}`}
+      style={{
+        background:"#1a1a2e",
+        boxShadow: glow
+          ? "0 0 0 1px rgba(124,58,237,0.45), 0 8px 32px rgba(124,58,237,0.2), 0 0 60px rgba(6,182,212,0.05)"
+          : "0 0 0 1px rgba(124,58,237,0.13), 0 4px 20px rgba(0,0,0,0.35)"
+      }}>
       {children}
     </div>
   );
@@ -52,7 +57,7 @@ export function DropZone({ onFile, accept = ".pdf,.csv,.txt", label, sublabel, f
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
       onClick={() => fileRef.current?.click()}
-      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragging ? "border-violet-500 bg-violet-950/20" : "border-slate-700/60 hover:border-violet-600/50 hover:bg-white/5"}`}
+      className={`p-8 text-center cursor-pointer rounded-xl ${dragging ? "border-2 border-solid border-violet-500 bg-violet-950/20" : "dropzone-animated"}`}
     >
       <div className="text-4xl mb-2">{fileName ? "📄" : "⬆️"}</div>
       {fileName

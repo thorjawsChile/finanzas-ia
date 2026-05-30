@@ -57,7 +57,7 @@ export default function UploadTab({ salaries, onAnalysis, rawText, setRawText })
           className="w-full h-40 bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 placeholder-slate-700 resize-none focus:outline-none focus:border-violet-700 font-mono leading-relaxed" />
         <div className="flex items-center gap-3 mt-4 flex-wrap">
           <button onClick={handleAnalyze} disabled={!rawText.trim() || loading}
-            className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all flex items-center gap-2">
+            className={`px-6 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all ${(!rawText.trim()||loading)?"bg-slate-700 text-slate-500 cursor-not-allowed":"btn-glow"}`}>
             {loading ? <><span className="animate-spin inline-block">⟳</span> {progress || "Analizando…"}</> : <>✦ Analizar con IA</>}
           </button>
           <RateLimitBadge/>

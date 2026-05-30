@@ -125,7 +125,7 @@ ${(salaries||[]).length > 0 ? `
 
   return (
     <button onClick={handleExport} disabled={loading}
-      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 rounded-xl text-xs font-medium text-slate-300 hover:text-white transition-all">
+      className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white transition-all ${loading ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "btn-glow"}`}>
       {loading ? <><span className="animate-spin inline-block">⟳</span> Generando…</> : <>📥 Exportar informe PDF</>}
     </button>
   );
