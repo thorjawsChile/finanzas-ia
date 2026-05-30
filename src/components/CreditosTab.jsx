@@ -96,7 +96,8 @@ export function CreditosTab({ creditos, setCreditos }) {
         </div>
         <div className="flex gap-2">
           <button onClick={handleAdd} disabled={!nombre||!cuota}
-            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-sm font-semibold text-white transition-all">
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+            style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)",boxShadow:"0 0 15px rgba(124,58,237,0.4)",opacity:(!nombre||!cuota)?0.45:1,cursor:(!nombre||!cuota)?"not-allowed":"pointer"}}>
             {editing !== null ? "Guardar cambios" : "+ Agregar"}
           </button>
           {editing !== null && (
