@@ -258,6 +258,11 @@ export default function SalaryTab({ salaries, setSalaries }) {
             <KpiCard label="Último Sueldo"   value={fmt(latestSalary)} accent="emerald"/>
             <KpiCard label="Sueldo Promedio" value={fmt(avgSalary)}    accent="amber"/>
           </div>
+          {salaries.length === 1 && (
+            <p className="text-slate-500 text-sm text-center py-4">
+              Agrega un sueldo más para ver la evolución en el tiempo.
+            </p>
+          )}
           {salaries.length > 1 && (
             <Card>
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Evolución de Sueldos</h3>
@@ -265,7 +270,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
                 <LineChart data={chartData} margin={{left:0,right:10}}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
                   <XAxis dataKey="label" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/>
-                  <YAxis tickFormatter={(v)=>"$"+(v/1000000).toFixed(1)+"M"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
+                  <YAxis tickFormatter={v=>v>=1000000?"$"+(v/1000000).toFixed(1)+"M":"$"+(v/1000).toFixed(0)+"k"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
                   <Tooltip content={<CustomTooltip/>}/>
                   <Line type="monotone" dataKey="sueldo" name="Sueldo" stroke="#7c3aed" strokeWidth={2} dot={{fill:"#7c3aed",r:4}} activeDot={{r:6,fill:"#06b6d4"}}/>
                 </LineChart>
