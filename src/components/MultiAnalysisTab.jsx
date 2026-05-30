@@ -270,7 +270,7 @@ export function MultiAnalysisTab({ periods, salaries, onRemove }) {
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                    outerRadius={80} innerRadius={42} paddingAngle={2}
+                    outerRadius={80} innerRadius={42} paddingAngle={1} minAngle={4}
                     label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}>
                     {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
                   </Pie>
