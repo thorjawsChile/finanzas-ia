@@ -118,7 +118,19 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
             <PieChart width={220} height={220} margin={{top:0,right:0,bottom:0,left:0}}>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={82} innerRadius={44}
                 paddingAngle={0} startAngle={90} endAngle={-270}
-                label={({name,percent})=>percent>0.06?`${(percent*100).toFixed(0)}%`:""} labelLine={false}
+                label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
+                  if (percent <= 0.06) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = outerRadius + 18;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12}>
+                      {`${(percent * 100).toFixed(0)}%`}
+                    </text>
+                  );
+                }}
+                labelLine={false}
                 strokeWidth={0}>
                 {pieData.map((e,i)=><Cell key={i} fill={CAT_COLORS[e.name]||PALETTE[i%PALETTE.length]}/>)}
               </Pie>
