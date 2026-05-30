@@ -217,11 +217,11 @@ export default function App() {
         fontFamily:"'Inter', system-ui, sans-serif",
       }}
     >
-      <div style={{background:"linear-gradient(135deg,#1a0533 0%,#0f0f1a 100%)",borderBottom:"1px solid rgba(124,58,237,0.25)"}}>
+      <div style={{background:"linear-gradient(135deg,#1a0533 0%,#2d1060 30%,#0d1a33 65%,#0f0f1a 100%)",backgroundSize:"300% 300%",borderBottom:"1px solid rgba(124,58,237,0.25)",animation:"gradientShift 10s ease infinite"}}>
       <div className="px-8 pt-10 pb-8 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 4px 20px rgba(124,58,237,0.45)"}}>💳</div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg logo-icon" style={{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 4px 20px rgba(124,58,237,0.45)"}}>💳</div>
             <div>
               <h1 className="text-2xl font-extrabold leading-none tracking-tight" style={{background:"linear-gradient(135deg,#e879f9 0%,#7c3aed 45%,#06b6d4 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",filter:"drop-shadow(0 0 12px rgba(232,121,249,0.45))"}}>FinanzasIA</h1>
               <p className="text-xs text-slate-500 mt-0.5">Análisis inteligente de gastos</p>
@@ -281,7 +281,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="pb-12">
+        <div key={tab} className="pb-12 tab-content">
           {tab==="upload"     && <UploadTab salaries={salaries} onAnalysis={handleAnalysis} rawText={rawText} setRawText={setRawText}/>}
           {tab==="analysis"   && <AnalysisTab analysis={analysis} budget={budget} setBudget={setBudget}/>}
           {tab==="multi"      && <MultiAnalysisTab periods={periods} salaries={salaries} onRemove={handleRemovePeriod}/>}

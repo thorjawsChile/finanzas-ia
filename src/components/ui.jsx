@@ -4,7 +4,7 @@ import { fmt } from "../utils.js";
 
 export function Card({ children, className = "", glow = false }) {
   return (
-    <div className={`rounded-2xl p-7 transition-all ${className}`}
+    <div className={`rounded-2xl p-7 transition-all card-animate ${className}`}
       style={{
         background:"#1a1a2e",
         border:"1px solid #7c3aed",
