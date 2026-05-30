@@ -172,7 +172,18 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [budget, session?.token]);
 
-  const handleAnalysis = (result) => {
+  const BANK_PATTERNS = [
+    ["Banco Santander", /santander/i],
+    ["BCI",             /\bbci\b/i],
+    ["Banco de Chile",  /banco de chile/i],
+    ["Scotiabank",      /scotiabank/i],
+    ["BancoEstado",     /bancoestado|banco\s+estado/i],
+    ["Itaú",            /ita[uú]/i],
+    ["BICE",            /\bbice\b/i],
+    ["Security",        /\bsecurity\b/i],
+  ];
+
+  const handleAnalysis = (result, rawText = "") => {
     setAnalysis(result);
     setPeriods(prev => {
       const pmMatch = result?.periodoMes
@@ -180,12 +191,24 @@ export default function App() {
         : null;
       const banco = result?.banco?.trim();
       let label;
+
       if (banco && pmMatch) {
         label = `${banco} ${MONTHS_ES[parseInt(pmMatch[1], 10) - 1]} ${pmMatch[2]}`;
       } else if (pmMatch) {
         label = `${MONTHS_ES[parseInt(pmMatch[1], 10) - 1]} ${pmMatch[2]}`;
       } else {
-        label = `Período ${prev.length + 1}`;
+        const head = rawText.slice(0, 800);
+        const foundBank      = BANK_PATTERNS.find(([, re]) => re.test(head))?.[0];
+        const yearMatch      = head.match(/20\d{2}/);
+        const year           = yearMatch ? yearMatch[0] : null;
+        const foundMonthIdx  = MONTHS_ES.findIndex(m => new RegExp(m, "i").test(head));
+        const foundMonth     = foundMonthIdx >= 0 ? MONTHS_ES[foundMonthIdx] : null;
+
+        if (foundBank && foundMonth && year)      label = `${foundBank} ${foundMonth} ${year}`;
+        else if (foundBank && year)               label = `${foundBank} ${year}`;
+        else if (foundMonth && year)              label = `${foundMonth} ${year}`;
+        else if (foundBank)                       label = foundBank;
+        else                                      label = `Período ${prev.length + 1}`;
       }
       return [...prev, { label, analysis: result, addedAt: Date.now() }];
     });
