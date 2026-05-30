@@ -232,7 +232,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                 </defs>
                 <XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false}/>
                 <YAxis tickFormatter={v=>"$"+(v/1000000).toFixed(1)+"M"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
-                <Tooltip content={<CustomTooltip/>} cursor={{fill:"rgba(124,58,237,0.07)"}}/>
+                <Tooltip content={<CustomTooltip/>} cursor={false}/>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,41,59,0.8)"/>
                 <Bar dataKey="total" name="Total" radius={6} maxBarSize={48} fill="url(#barGradPeriod)"/>
               </BarChart>
