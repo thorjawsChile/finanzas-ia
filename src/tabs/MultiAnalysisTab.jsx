@@ -223,7 +223,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
           <Card>
             <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Total por período</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={compareData} margin={{left:10,right:16}}>
+              <BarChart data={compareData} margin={{top:20,left:10,right:16,bottom:0}}>
                 <defs>
                   <linearGradient id="barGradPeriod" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#7c3aed"/>
