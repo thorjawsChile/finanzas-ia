@@ -78,13 +78,15 @@ export default function SalaryTab({ salaries, setSalaries }) {
   return (
     <div className="space-y-5">
       {/* Mode selector */}
-      <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1">
+      <div className="flex gap-1 rounded-2xl p-1" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.18)"}}>
         <button onClick={()=>setMode("manual")}
-          className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${mode==="manual"?"bg-slate-700 text-white":"text-slate-500 hover:text-slate-300"}`}>
+          className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${mode==="manual"?"text-white":"text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+          style={mode==="manual"?{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 2px 10px rgba(124,58,237,0.35)"}:{}}>
           ✍️ Ingresar manualmente
         </button>
         <button onClick={()=>setMode("pdf")}
-          className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${mode==="pdf"?"bg-slate-700 text-white":"text-slate-500 hover:text-slate-300"}`}>
+          className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${mode==="pdf"?"text-white":"text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+          style={mode==="pdf"?{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 2px 10px rgba(124,58,237,0.35)"}:{}}>
           📄 Subir liquidación PDF
         </button>
       </div>
@@ -97,28 +99,28 @@ export default function SalaryTab({ salaries, setSalaries }) {
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Mes</label>
               <select value={month} onChange={(e)=>setMonth(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600">
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600">
                 {MONTHS_ES.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Año</label>
               <input type="number" value={year} onChange={(e)=>setYear(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600"/>
             </div>
           </div>
           <div className="mb-3">
             <label className="text-xs text-slate-500 mb-1 block">Monto líquido ($)</label>
             <input type="text" value={amount} onChange={(e)=>setAmount(e.target.value)} placeholder="Ej: 1.500.000"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
           <div className="mb-4">
             <label className="text-xs text-slate-500 mb-1 block">Nota (opcional)</label>
             <input type="text" value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Ej: Incluye bono"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600"/>
           </div>
           <button onClick={handleAdd} disabled={!amount}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all">
+            className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all">
             + Agregar Sueldo
           </button>
         </Card>
@@ -133,7 +135,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
             loading={pdfLoading} progress={pdfProgress}
             label="Arrastra tu liquidación PDF aquí o" sublabel="Solo PDF" />
           {pdfLoading && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-emerald-400">
+            <div className="mt-3 flex items-center gap-2 text-sm text-cyan-400">
               <span className="animate-spin inline-block">⟳</span> {pdfProgress}
             </div>
           )}
@@ -149,7 +151,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
             <div className="flex items-start gap-3 mb-4">
               <span className="text-2xl">🧾</span>
               <div>
-                <p className="text-xs font-medium text-emerald-400 uppercase tracking-widest mb-0.5">Liquidación Detectada</p>
+                <p className="text-xs font-medium text-violet-400 uppercase tracking-widest mb-0.5">Liquidación Detectada</p>
                 {payslip.workerName && <p className="text-base font-semibold text-slate-200">{payslip.workerName}</p>}
                 {payslip.companyName && <p className="text-sm text-slate-400">{payslip.companyName}</p>}
                 <p className="text-sm text-slate-400">{MONTHS_ES[(payslip.month||1)-1]} {payslip.year}</p>
@@ -168,9 +170,9 @@ export default function SalaryTab({ salaries, setSalaries }) {
                 <p className="text-xs text-slate-500 mb-0.5">Total Descuentos</p>
                 <p className="text-lg font-mono font-bold text-rose-400">{fmt(payslip.totalDescuentos)}</p>
               </div>
-              <div className="bg-emerald-950/60 border border-emerald-800/40 rounded-xl p-3">
-                <p className="text-xs text-emerald-500 mb-0.5">Líquido a Pagar</p>
-                <p className="text-lg font-mono font-bold text-emerald-400">{fmt(payslip.liquidoPagar)}</p>
+              <div className="rounded-xl p-3" style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)"}}>
+                <p className="text-xs text-violet-400 mb-0.5">Líquido a Pagar</p>
+                <p className="text-lg font-mono font-bold text-violet-300">{fmt(payslip.liquidoPagar)}</p>
               </div>
             </div>
 
@@ -229,18 +231,18 @@ export default function SalaryTab({ salaries, setSalaries }) {
                   <span>Haberes</span><span>Descuentos</span>
                 </div>
                 <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-emerald-500 transition-all" style={{width:`${Math.round((payslip.liquidoPagar/payslip.totalHaberes)*100)}%`}}/>
+                  <div className="h-full bg-violet-500 transition-all" style={{width:`${Math.round((payslip.liquidoPagar/payslip.totalHaberes)*100)}%`}}/>
                   <div className="h-full bg-rose-500 flex-1"/>
                 </div>
                 <div className="flex justify-between text-xs mt-1">
-                  <span className="text-emerald-400">{payslip.totalHaberes > 0 ? Math.round((payslip.liquidoPagar/payslip.totalHaberes)*100) : 0}% líquido</span>
+                  <span className="text-violet-400">{payslip.totalHaberes > 0 ? Math.round((payslip.liquidoPagar/payslip.totalHaberes)*100) : 0}% líquido</span>
                   <span className="text-rose-400">{payslip.totalHaberes > 0 ? Math.round((payslip.totalDescuentos/payslip.totalHaberes)*100) : 0}% descuentos</span>
                 </div>
               </div>
             )}
 
             <button onClick={handleAddFromPayslip}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold text-white transition-all">
+              className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-sm font-semibold text-white transition-all">
               ✓ Agregar {fmt(payslip.liquidoPagar)} al historial
             </button>
           </Card>
@@ -263,7 +265,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
                   <XAxis dataKey="label" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}/>
                   <YAxis tickFormatter={(v)=>"$"+(v/1000000).toFixed(1)+"M"} tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false} width={55}/>
                   <Tooltip content={<CustomTooltip/>}/>
-                  <Line type="monotone" dataKey="sueldo" name="Sueldo" stroke="#34d399" strokeWidth={2} dot={{fill:"#34d399",r:4}} activeDot={{r:6}}/>
+                  <Line type="monotone" dataKey="sueldo" name="Sueldo" stroke="#7c3aed" strokeWidth={2} dot={{fill:"#7c3aed",r:4}} activeDot={{r:6,fill:"#06b6d4"}}/>
                 </LineChart>
               </ResponsiveContainer>
             </Card>
@@ -282,7 +284,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
                       </span>
                       <span className="ml-2 text-xs text-slate-500">{m.count} sueldos</span>
                     </div>
-                    <span className="text-base font-mono font-bold text-emerald-400">{fmt(m.total)}</span>
+                    <span className="text-base font-mono font-bold text-cyan-400">{fmt(m.total)}</span>
                   </div>
                 ))}
               </div>
@@ -300,7 +302,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
                       {s.note && <span className="ml-2 text-xs text-slate-500">· {s.note}</span>}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-mono text-emerald-400">{fmt(s.amount)}</span>
+                      <span className="text-sm font-mono text-cyan-400">{fmt(s.amount)}</span>
                       <button onClick={()=>setSalaries(prev => prev.filter((_,i) => i !== origIdx))}
                         className="text-slate-700 hover:text-rose-400 transition-colors text-xs">✕</button>
                     </div>

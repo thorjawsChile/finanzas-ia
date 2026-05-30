@@ -39,7 +39,7 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
         <div className="flex gap-3">
           <span className="text-2xl shrink-0">🤖</span>
           <div>
-            <p className="text-xs font-medium text-emerald-400 mb-1 uppercase tracking-widest">Análisis IA</p>
+            <p className="text-xs font-medium text-violet-400 mb-1 uppercase tracking-widest">Análisis IA</p>
             <p className="text-sm text-slate-300 leading-relaxed">{summary}</p>
           </div>
         </div>
@@ -91,13 +91,13 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
                   value={editBudget[name]||""}
                   onChange={e=>setEditBudget(prev=>({...prev,[name]:e.target.value}))}
                   placeholder="Sin límite"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-600"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-violet-600"
                 />
               </div>
             ))}
           </div>
           <div className="flex gap-2">
-            <button onClick={saveBudget} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold text-white">Guardar presupuesto</button>
+            <button onClick={saveBudget} className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 rounded-xl text-xs font-semibold text-white">Guardar presupuesto</button>
             <button onClick={()=>setShowBudget(false)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs text-slate-300">Cancelar</button>
           </div>
         </Card>
@@ -105,7 +105,7 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
 
       {!showBudget && Object.keys(budget||{}).length === 0 && (
         <button onClick={()=>{setEditBudget({});setShowBudget(true);}}
-          className="w-full py-2.5 border border-dashed border-slate-700 hover:border-emerald-600/50 rounded-xl text-xs text-slate-500 hover:text-slate-300 transition-all">
+          className="w-full py-2.5 border border-dashed border-slate-700/60 hover:border-violet-600/50 rounded-xl text-xs text-slate-500 hover:text-slate-300 transition-all">
           🚦 Definir presupuesto mensual por categoría
         </button>
       )}
@@ -152,7 +152,7 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
         <div className="space-y-2">
           {recommendations.map((rec,i)=>(
             <div key={i} className="flex gap-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700/40">
-              <span className="text-emerald-500 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
+              <span className="text-violet-400 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
               <p className="text-sm text-slate-300 leading-relaxed">{rec}</p>
             </div>
           ))}

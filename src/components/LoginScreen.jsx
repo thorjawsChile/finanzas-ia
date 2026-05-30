@@ -26,11 +26,11 @@ export default function LoginScreen({ onLogin }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "radial-gradient(ellipse 80% 60% at 50% -10%, #0d2e1f 0%, #0a0f1a 60%, #060810 100%)" }}>
+      style={{ background: "radial-gradient(ellipse 80% 60% at 50% -10%, #1a0a2e 0%, #0f0f1a 60%, #07071a 100%)", fontFamily:"'Inter', system-ui, sans-serif" }}>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-emerald-900/50 mb-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4" style={{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 8px 32px rgba(124,58,237,0.5)"}}>
             💳
           </div>
           <h1 className="text-2xl font-bold text-slate-100">FinanzasIA</h1>
@@ -38,14 +38,14 @@ export default function LoginScreen({ onLogin }) {
         </div>
 
         {/* Form */}
-        <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 backdrop-blur-sm p-6 space-y-4">
+        <div className="rounded-2xl p-6 space-y-4" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.2)"}}>
           <div>
             <label className="text-xs text-slate-400 font-medium mb-1.5 block">Usuario</label>
             <input
               type="text" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={handleKey}
               placeholder="tu usuario"
               autoComplete="username"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-600 transition-colors"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-violet-600 transition-colors"
             />
           </div>
           <div>
@@ -55,7 +55,7 @@ export default function LoginScreen({ onLogin }) {
                 type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKey}
                 placeholder="••••••••"
                 autoComplete="current-password"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-200 focus:outline-none focus:border-emerald-600 transition-colors"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 pr-10 text-sm text-slate-200 focus:outline-none focus:border-violet-600 transition-colors"
               />
               <button onClick={() => setShowPass(p => !p)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs transition-colors">
@@ -72,7 +72,7 @@ export default function LoginScreen({ onLogin }) {
           )}
 
           <button onClick={handleSubmit} disabled={!username.trim() || !password || loading}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 mt-2">
+            className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 mt-2">
             {loading ? <><span className="animate-spin inline-block">⟳</span> Ingresando…</> : "Ingresar →"}
           </button>
         </div>

@@ -213,14 +213,14 @@ export default function App() {
   return (
     <div className="min-h-screen text-white"
       style={{
-        background:"radial-gradient(ellipse 80% 60% at 50% -10%, #0d2e1f 0%, #0a0f1a 60%, #060810 100%)",
-        fontFamily:"'DM Sans', system-ui, sans-serif",
+        background:"radial-gradient(ellipse 80% 60% at 50% -20%, #1a0a2e 0%, #0f0f1a 55%, #07071a 100%)",
+        fontFamily:"'Inter', system-ui, sans-serif",
       }}
     >
       <div className="px-6 pt-8 pb-4 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-lg shadow-lg shadow-emerald-900/50">💳</div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 4px 20px rgba(124,58,237,0.45)"}}>💳</div>
             <div>
               <h1 className="text-xl font-bold text-slate-100 leading-none">FinanzasIA</h1>
               <p className="text-xs text-slate-500 mt-0.5">Análisis inteligente de gastos</p>
@@ -231,7 +231,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 hidden sm:inline">👤 {session.username}</span>
             <button onClick={handleLogout}
-              className="text-xs text-slate-600 hover:text-slate-300 border border-slate-700 hover:border-slate-500 px-2.5 py-1 rounded-lg transition-all">
+              className="text-xs text-slate-400 hover:text-white border border-violet-900/40 hover:border-violet-600/60 px-2.5 py-1 rounded-lg transition-all" style={{background:"rgba(124,58,237,0.06)"}}>
               Salir
             </button>
           </div>
@@ -243,7 +243,7 @@ export default function App() {
             </span>
           )}
           {syncMsg && !syncing && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-800/40 border border-slate-700/30 rounded-full text-xs text-emerald-500">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs text-cyan-400" style={{background:"rgba(6,182,212,0.08)",border:"1px solid rgba(6,182,212,0.2)"}}>
               {syncMsg}
             </span>
           )}
@@ -255,14 +255,14 @@ export default function App() {
           )}
           <ExportPDFButton analysis={analysis} periods={periods} salaries={salaries} creditos={creditos} ahorros={ahorros} budget={budget}/>
           {analysis && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-950/60 border border-emerald-800/40 rounded-full text-xs text-emerald-400">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-violet-300" style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)"}}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:"#7c3aed"}}/>
               Análisis completado · {analysis.expenses?.length} transacciones
             </div>
           )}
           {periods.length > 1 && (
             <button onClick={()=>setTab("multi")}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-950/60 border border-sky-800/40 rounded-full text-xs text-sky-400 hover:bg-sky-900/40 transition-all">
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs text-cyan-400 transition-all hover:opacity-80" style={{background:"rgba(6,182,212,0.08)",border:"1px solid rgba(6,182,212,0.25)"}}>
               📅 {periods.length} períodos cargados — ver comparativa
             </button>
           )}
@@ -270,10 +270,11 @@ export default function App() {
       </div>
 
       <div className="px-6 max-w-4xl mx-auto">
-        <div className="grid grid-cols-7 gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1 mb-5">
+        <div className="grid grid-cols-7 gap-1 rounded-2xl p-1 mb-5" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.18)"}}>
           {tabs.map((t)=>(
             <button key={t.id} onClick={()=>setTab(t.id)}
-              className={`py-2 px-1 rounded-xl text-xs font-medium transition-all text-center ${tab===t.id?"bg-emerald-700 text-white shadow":"text-slate-500 hover:text-slate-300"}`}>
+              className={`py-2 px-1 rounded-xl text-xs font-medium transition-all text-center ${tab===t.id?"text-white":"text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+              style={tab===t.id?{background:"linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",boxShadow:"0 2px 12px rgba(124,58,237,0.4)"}:{}}>
               {t.label}
             </button>
           ))}

@@ -60,44 +60,44 @@ export default function CreditosTab({ creditos, setCreditos }) {
           <div className="col-span-2">
             <label className="text-xs text-slate-400 mb-1 block">Nombre del crédito</label>
             <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Ej: Crédito auto BCI"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Tipo</label>
             <select value={tipo} onChange={e=>setTipo(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600">
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600">
               {tipoOpts.map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Tasa interés anual (%)</label>
             <input value={tasa} onChange={e=>setTasa(e.target.value)} placeholder="Ej: 12.5"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Monto total del crédito ($)</label>
             <input value={montoTotal} onChange={e=>setMontoTotal(e.target.value)} placeholder="Ej: 5.000.000"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Cuota mensual ($)</label>
             <input value={cuota} onChange={e=>setCuota(e.target.value)} placeholder="Ej: 150.000"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Total de cuotas</label>
             <input type="number" value={mesesTotal} onChange={e=>setMesesTotal(e.target.value)} placeholder="Ej: 48"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Cuotas ya pagadas</label>
             <input type="number" value={mesesPagados} onChange={e=>setMesesPagados(e.target.value)} placeholder="Ej: 12"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-600"/>
           </div>
         </div>
         <div className="flex gap-2">
           <button onClick={handleAdd} disabled={!nombre||!cuota}
-            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-sm font-semibold text-white transition-all">
+            className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-sm font-semibold text-white transition-all">
             {editing !== null ? "Guardar cambios" : "+ Agregar"}
           </button>
           {editing !== null && (

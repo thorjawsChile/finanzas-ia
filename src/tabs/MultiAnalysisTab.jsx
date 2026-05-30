@@ -85,17 +85,20 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
       <Card>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-slate-200">Períodos cargados ({periods.length})</h2>
-          <div className="flex gap-1 bg-slate-800 rounded-xl p-1">
+          <div className="flex gap-1 rounded-xl p-1" style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.18)"}}>
             <button onClick={()=>setView("combined")}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="combined"?"bg-emerald-700 text-white":"text-slate-400 hover:text-slate-200"}`}>
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="combined"?"text-white":"text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
+              style={view==="combined"?{background:"linear-gradient(135deg,#7c3aed,#6d28d9)"}:{}}>
               Acumulado
             </button>
             <button onClick={()=>setView("compare")}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="compare"?"bg-emerald-700 text-white":"text-slate-400 hover:text-slate-200"}`}>
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="compare"?"text-white":"text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
+              style={view==="compare"?{background:"linear-gradient(135deg,#7c3aed,#6d28d9)"}:{}}>
               Comparativa
             </button>
             <button onClick={()=>setView("ai")}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="ai"?"bg-emerald-700 text-white":"text-slate-400 hover:text-slate-200"}`}>
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view==="ai"?"text-white":"text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
+              style={view==="ai"?{background:"linear-gradient(135deg,#7c3aed,#6d28d9)"}:{}}>
               🤖 IA
             </button>
           </div>
@@ -128,7 +131,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
             <button
               onClick={()=>handleAiAnalysis(salaries)}
               disabled={aiLoading}
-              className="shrink-0 ml-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2">
+              className="shrink-0 ml-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2">
               {aiLoading ? <><span className="animate-spin inline-block">⟳</span> Analizando…</> : <>✦ Analizar todo</>}
             </button>
           </div>
@@ -280,7 +283,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                       </td>
                       <td className="py-2.5 text-right">
                         <div className="flex flex-col items-end gap-1">
-                          <span className="font-mono text-emerald-400 font-semibold">{fmt(m.total)}</span>
+                          <span className="font-mono text-cyan-400 font-semibold">{fmt(m.total)}</span>
                           <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden">
                             <div className="h-full rounded-full bg-emerald-500/60"
                               style={{ width: `${Math.round((m.total / monthlyMax) * 100)}%` }}/>
@@ -319,7 +322,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                             <span className="text-slate-200">{p.label}</span>
                           </div>
                         </td>
-                        <td className="py-2.5 text-right font-mono text-emerald-400">{fmt(p.analysis.totalExpenses||0)}</td>
+                        <td className="py-2.5 text-right font-mono text-cyan-400">{fmt(p.analysis.totalExpenses||0)}</td>
                         <td className="py-2.5 text-right text-slate-400">{p.analysis.expenses?.length||0}</td>
                         <td className="py-2.5 text-right text-slate-400 text-xs">{topCat ? `${topCat.name} (${fmt(topCat.total)})` : "—"}</td>
                       </tr>
@@ -341,7 +344,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
             <div className="flex gap-3">
               <span className="text-2xl shrink-0">🤖</span>
               <div className="flex-1">
-                <p className="text-xs font-medium text-emerald-400 uppercase tracking-widest mb-1">Análisis Consolidado — {periods.length} períodos</p>
+                <p className="text-xs font-medium text-violet-400 uppercase tracking-widest mb-1">Análisis Consolidado — {periods.length} períodos</p>
                 <p className="text-sm text-slate-300 leading-relaxed">{aiResult.overallSummary}</p>
               </div>
             </div>
@@ -386,19 +389,19 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-200 truncate">{c.desc}</p>
                       <div className="flex gap-2 mt-0.5">
-                        <span className="text-xs text-slate-500">Esfuerzo: <span className={c.effort==="Fácil"?"text-emerald-400":c.effort==="Medio"?"text-amber-400":"text-rose-400"}>{c.effort}</span></span>
-                        <span className="text-xs text-slate-500">Impacto: <span className={c.impact==="Alto"?"text-emerald-400":c.impact==="Medio"?"text-amber-400":"text-slate-400"}>{c.impact}</span></span>
+                        <span className="text-xs text-slate-500">Esfuerzo: <span className={c.effort==="Fácil"?"text-cyan-400":c.effort==="Medio"?"text-amber-400":"text-rose-400"}>{c.effort}</span></span>
+                        <span className="text-xs text-slate-500">Impacto: <span className={c.impact==="Alto"?"text-cyan-400":c.impact==="Medio"?"text-amber-400":"text-slate-400"}>{c.impact}</span></span>
                       </div>
                     </div>
                     <div className="shrink-0 ml-3 text-right">
-                      <p className="text-sm font-mono text-emerald-400">−{fmt(c.saving)}</p>
+                      <p className="text-sm font-mono text-cyan-400">−{fmt(c.saving)}</p>
                       <p className="text-xs text-slate-500">al mes</p>
                     </div>
                   </div>
                 ))}
                 <div className="flex justify-between pt-2 border-t border-slate-800 text-sm">
                   <span className="text-slate-500">Ahorro potencial total</span>
-                  <span className="font-mono text-emerald-400 font-bold">{fmt(aiResult.cuts.reduce((a,c)=>a+c.saving,0))}/mes</span>
+                  <span className="font-mono text-cyan-400 font-bold">{fmt(aiResult.cuts.reduce((a,c)=>a+c.saving,0))}/mes</span>
                 </div>
               </div>
             </Card>
@@ -413,7 +416,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                   <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800/40 last:border-0">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-slate-200 truncate">{t.desc}</p>
-                      <p className="text-xs text-slate-500">{t.category} · <span className={t.verdict.includes("Eliminar")?"text-rose-400":t.verdict.includes("Reducir")?"text-amber-400":"text-emerald-400"}>{t.verdict}</span></p>
+                      <p className="text-xs text-slate-500">{t.category} · <span className={t.verdict.includes("Eliminar")?"text-rose-400":t.verdict.includes("Reducir")?"text-amber-400":"text-cyan-400"}>{t.verdict}</span></p>
                     </div>
                     <span className="text-sm font-mono text-slate-300 shrink-0 ml-2">{fmt(t.avgAmount)}/mes</span>
                   </div>
@@ -428,7 +431,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
             <div className="space-y-2">
               {aiResult.recommendations.map((r,i) => (
                 <div key={i} className="flex gap-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700/40">
-                  <span className="text-emerald-500 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
+                  <span className="text-violet-400 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
                   <p className="text-sm text-slate-300 leading-relaxed">{r}</p>
                 </div>
               ))}

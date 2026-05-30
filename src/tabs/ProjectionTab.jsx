@@ -56,7 +56,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
   };
 
   const statusConfig = {
-    green:  { bg:"bg-emerald-950/60", border:"border-emerald-700/50", text:"text-emerald-400", icon:"✅", label:"Viable — Situación cómoda" },
+    green:  { bg:"bg-cyan-950/60", border:"border-cyan-700/50", text:"text-cyan-400", icon:"✅", label:"Viable — Situación cómoda" },
     yellow: { bg:"bg-amber-950/60",   border:"border-amber-700/50",   text:"text-amber-400",   icon:"⚠️", label:"Ajustado — Requiere recortes" },
     red:    { bg:"bg-rose-950/60",    border:"border-rose-700/50",    text:"text-rose-400",    icon:"❌", label:"Inviable — Presupuesto insuficiente" },
   };
@@ -67,19 +67,19 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
       {hasData ? (
         <div className="grid grid-cols-2 gap-2">
           {latestSalary > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-950/50 border border-emerald-800/40 rounded-xl">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.25)"}}>
               <span className="text-base shrink-0">💰</span>
               <div>
-                <p className="text-xs text-emerald-400 font-medium">Sueldo detectado</p>
+                <p className="text-xs text-violet-400 font-medium">Sueldo detectado</p>
                 <p className="text-xs text-slate-300 font-mono">{fmt(latestSalary)}</p>
               </div>
             </div>
           )}
           {avgMonthlyExpenses > 0 ? (
-            <div className="flex items-center gap-2 px-3 py-2 bg-sky-950/50 border border-sky-800/40 rounded-xl">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:"rgba(6,182,212,0.08)",border:"1px solid rgba(6,182,212,0.2)"}}>
               <span className="text-base shrink-0">📊</span>
               <div>
-                <p className="text-xs text-sky-400 font-medium">Gastos bancarios{periodsWithData.length > 1 ? ` (${periodsWithData.length} meses)` : ""}</p>
+                <p className="text-xs text-cyan-400 font-medium">Gastos bancarios{periodsWithData.length > 1 ? ` (${periodsWithData.length} meses)` : ""}</p>
                 <p className="text-xs text-slate-300 font-mono">{fmt(avgMonthlyExpenses)}/mes</p>
               </div>
             </div>
@@ -135,13 +135,13 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-500">Libera</p>
-                    <p className="text-sm font-mono font-bold text-emerald-400">+{fmt(c.cuota)}/mes</p>
+                    <p className="text-sm font-mono font-bold text-cyan-400">+{fmt(c.cuota)}/mes</p>
                   </div>
                 </div>
               );
             })}
             <p className="text-xs text-slate-600 pt-1">
-              Total a liberar: <span className="text-emerald-400 font-medium">{fmt(creditosProximos.reduce((s,c)=>s+c.cuota,0))}/mes</span> en los próximos 6 meses
+              Total a liberar: <span className="text-cyan-400 font-medium">{fmt(creditosProximos.reduce((s,c)=>s+c.cuota,0))}/mes</span> en los próximos 6 meses
             </p>
           </div>
         </Card>
@@ -160,7 +160,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
             </label>
             <input type="text" value={houseMonthly} onChange={e=>setHouseMonthly(e.target.value)}
               placeholder="Ej: 650.000"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block font-medium">
@@ -169,7 +169,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
             </label>
             <input type="text" value={currentRent} onChange={e=>setCurrentRent(e.target.value)}
               placeholder="Ej: 400.000  (dejar vacío si no arriendas)"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block font-medium">
@@ -178,12 +178,12 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
             </label>
             <input type="text" value={extraIncome} onChange={e=>setExtraIncome(e.target.value)}
               placeholder="Ej: 200.000  (dejar vacío si no tienes)"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
           </div>
         </div>
 
         <button onClick={handleProject} disabled={!houseMonthly || loading}
-          className="mt-4 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2">
+          className="mt-4 w-full py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2">
           {loading ? <><span className="animate-spin inline-block">⟳</span> Analizando con IA…</> : <>🔮 Proyectar viabilidad</>}
         </button>
         {error && <p className="mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/40 rounded-lg px-4 py-2">{error}</p>}
@@ -236,7 +236,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
                   <div className="flex gap-2 text-xs">
                     <span className="px-2 py-0.5 bg-rose-900/40 text-rose-400 rounded-full border border-rose-800/40">✂️ {cuts.length} cortar</span>
                     <span className="px-2 py-0.5 bg-amber-900/40 text-amber-400 rounded-full border border-amber-800/40">↓ {reduces.length} reducir</span>
-                    <span className="px-2 py-0.5 bg-emerald-900/40 text-emerald-400 rounded-full border border-emerald-800/40">✓ {keeps.length} ok</span>
+                    <span className="px-2 py-0.5 bg-cyan-900/40 text-cyan-400 rounded-full border border-cyan-800/40">✓ {keeps.length} ok</span>
                   </div>
                 </div>
 
@@ -305,7 +305,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
                       {keeps.map((t,i)=>(
                         <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-emerald-700 text-xs shrink-0">✓</span>
+                            <span className="text-cyan-600 text-xs shrink-0">✓</span>
                             <span className="text-sm text-slate-500 truncate">{t.desc}</span>
                           </div>
                           <span className="text-xs font-mono text-slate-600 shrink-0 ml-2">{fmt(t.amount)}</span>
@@ -352,7 +352,7 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
               <div className="space-y-2">
                 {result.recommendations.map((rec,i)=>(
                   <div key={i} className="flex gap-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700/40">
-                    <span className="text-emerald-500 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
+                    <span className="text-violet-400 font-bold text-sm shrink-0 font-mono">{i+1}.</span>
                     <p className="text-sm text-slate-300 leading-relaxed">{rec}</p>
                   </div>
                 ))}

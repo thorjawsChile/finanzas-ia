@@ -13,6 +13,8 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #0f0f1a;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 /* Prevent text selection on tap (feels more app-like) */
@@ -23,4 +25,4 @@ body {
 /* Custom scrollbar for desktop */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 2px; }

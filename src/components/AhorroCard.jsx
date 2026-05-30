@@ -31,7 +31,7 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
       <div className="grid grid-cols-3 gap-2 mb-3 text-center">
         <div className="bg-slate-800/60 rounded-xl p-2">
           <p className="text-xs text-slate-500 mb-0.5">Ahorrado</p>
-          <p className="text-sm font-mono font-bold text-emerald-400">{fmt(a.actual)}</p>
+          <p className="text-sm font-mono font-bold text-cyan-400">{fmt(a.actual)}</p>
         </div>
         <div className="bg-slate-800/60 rounded-xl p-2">
           <p className="text-xs text-slate-500 mb-0.5">Objetivo</p>
@@ -47,7 +47,7 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
         <div className="flex justify-between text-xs text-slate-500 mb-1">
           <span>{pct}% completado</span>
           {mesesFin !== null && falta > 0 && <span>~{mesesFin} meses restantes</span>}
-          {pct >= 100 && <span className="text-emerald-400">✅ Meta alcanzada</span>}
+          {pct >= 100 && <span className="text-cyan-400">✅ Meta alcanzada</span>}
         </div>
         <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: colorBar }}/>
@@ -81,7 +81,7 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
               </div>
               {hasMeta && (
                 <div className="text-right">
-                  <p className={`text-xs font-semibold ${onTrack ? "text-emerald-400" : "text-rose-400"}`}>
+                  <p className={`text-xs font-semibold ${onTrack ? "text-cyan-400" : "text-rose-400"}`}>
                     {onTrack ? "✅ En camino" : "⚠️ Retrasado"}
                   </p>
                   <p className="text-xs text-slate-500">
@@ -94,9 +94,9 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
             </div>
             {/* Timeline visual */}
             <div className="relative h-2 bg-slate-700 rounded-full overflow-visible">
-              <div className="absolute inset-y-0 left-0 bg-emerald-600/40 rounded-full" style={{ width: `${Math.min(100, pctEstimada)}%` }}/>
+              <div className="absolute inset-y-0 left-0 bg-violet-600/40 rounded-full" style={{ width: `${Math.min(100, pctEstimada)}%` }}/>
               {/* Marcador fecha estimada */}
-              <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900 z-10"
+              <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-violet-400 border-2 border-slate-900 z-10"
                 style={{ left: `calc(${Math.min(98, pctEstimada)}% - 6px)` }}
                 title={`Estimada: ${estimada.toLocaleDateString("es-CL")}`}/>
               {/* Marcador fecha meta */}
@@ -109,7 +109,7 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
             <div className="flex justify-between text-xs text-slate-600 mt-1.5">
               <span>Hoy</span>
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/>Estimado</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-400 inline-block"/>Estimado</span>
                 {hasMeta && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/>Meta</span>}
               </div>
             </div>
@@ -126,11 +126,11 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
         abonando ? (
           <div className="flex gap-2">
             <input value={abonoVal} onChange={e => setAbonoVal(e.target.value)} placeholder="Monto a abonar"
-              className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-emerald-600"/>
+              className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
             <button onClick={() => {
               const v = parseFloat(String(abonoVal).replace(/\./g, "").replace(",", "."));
               if (v > 0) { onAbonar(a.id, v); setAbonoVal(""); setAbonando(false); }
-            }} className="px-3 py-1.5 bg-emerald-600 rounded-xl text-xs text-white font-medium">✓</button>
+            }} className="px-3 py-1.5 bg-violet-600 rounded-xl text-xs text-white font-medium">✓</button>
             <button onClick={() => setAbonando(false)} className="px-3 py-1.5 bg-slate-700 rounded-xl text-xs text-slate-300">✕</button>
           </div>
         ) : (
