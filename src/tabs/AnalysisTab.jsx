@@ -219,6 +219,9 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
               </div>
             </div>
           ))}
+          {expensesFiltradas.length === 0 && (
+            <p className="text-slate-500 text-sm text-center py-4">Sin resultados</p>
+          )}
         </div>
       </Card>
     </div>
