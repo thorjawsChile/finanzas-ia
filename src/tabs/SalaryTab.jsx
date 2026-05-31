@@ -310,7 +310,7 @@ export default function SalaryTab({ salaries, setSalaries }) {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-mono text-cyan-400">{fmt(s.amount)}</span>
-                      <button onClick={()=>setSalaries(prev => prev.filter((_,i) => i !== origIdx))}
+                      <button onClick={()=>{ if(window.confirm("¿Eliminar este sueldo?")) setSalaries(prev => prev.filter((_,i) => i !== origIdx)); }}
                         className="text-slate-700 hover:text-rose-400 transition-colors text-xs">✕</button>
                     </div>
                   </div>

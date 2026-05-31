@@ -141,7 +141,7 @@ export default function CreditosTab({ creditos, setCreditos }) {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={()=>handleEdit(c)} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">✏️</button>
-                    <button onClick={()=>setCreditos(prev=>prev.filter(x=>x.id!==c.id))} className="text-xs text-slate-500 hover:text-rose-400 transition-colors">✕</button>
+                    <button onClick={()=>{ if(window.confirm(`¿Eliminar el crédito "${c.nombre}"?`)) setCreditos(prev=>prev.filter(x=>x.id!==c.id)); }} className="text-xs text-slate-500 hover:text-rose-400 transition-colors">✕</button>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-3 text-center">

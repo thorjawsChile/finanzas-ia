@@ -113,7 +113,7 @@ export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
                   <p className="text-xs text-slate-500">{p.analysis.expenses?.length||0} transacciones · {fmt(p.analysis.totalExpenses||0)}</p>
                 </div>
               </div>
-              <button onClick={()=>onRemove(i)}
+              <button onClick={()=>{ if(window.confirm(`¿Eliminar el período "${p.label}"?`)) onRemove(i); }}
                 className="text-slate-600 hover:text-rose-400 transition-colors text-sm px-2">✕</button>
             </div>
           ))}

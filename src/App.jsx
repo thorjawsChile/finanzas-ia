@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { loadSession, clearSession, savePeriods, saveSalaries } from "./security.js";
 import { DEMO_MODE, MONTHS_ES } from "./constants.js";
 import LoginScreen from "./components/LoginScreen.jsx";
 import ExportPDFButton from "./components/ExportPDFButton.jsx";
-import UploadTab from "./tabs/UploadTab.jsx";
-import AnalysisTab from "./tabs/AnalysisTab.jsx";
-import MultiAnalysisTab from "./tabs/MultiAnalysisTab.jsx";
-import SalaryTab from "./tabs/SalaryTab.jsx";
-import CreditosTab from "./tabs/CreditosTab.jsx";
-import AhorrosTab from "./tabs/AhorrosTab.jsx";
-import ProjectionTab from "./tabs/ProjectionTab.jsx";
+const UploadTab      = lazy(() => import("./tabs/UploadTab.jsx"));
+const AnalysisTab    = lazy(() => import("./tabs/AnalysisTab.jsx"));
+const MultiAnalysisTab = lazy(() => import("./tabs/MultiAnalysisTab.jsx"));
+const SalaryTab      = lazy(() => import("./tabs/SalaryTab.jsx"));
+const CreditosTab    = lazy(() => import("./tabs/CreditosTab.jsx"));
+const AhorrosTab     = lazy(() => import("./tabs/AhorrosTab.jsx"));
+const ProjectionTab  = lazy(() => import("./tabs/ProjectionTab.jsx"));
 
 /* ══════════════════════════════════════════════════════════════════════
    MAIN APP
@@ -142,8 +142,11 @@ export default function App() {
     cacheWrite("creditos", creditos);
     if (!session?.token) return;
     const tok = session.token;
-    const timer = setTimeout(() => {
-      fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"creditos",value:creditos}) });
+    const timer = setTimeout(async () => {
+      try {
+        await fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"creditos",value:creditos}) });
+        showSync("☁ Guardado");
+      } catch(e) { console.log("Save creditos error:", e); }
     }, 1500);
     return () => clearTimeout(timer);
   }, [creditos, session?.token]);
@@ -154,8 +157,11 @@ export default function App() {
     cacheWrite("ahorros", ahorros);
     if (!session?.token) return;
     const tok = session.token;
-    const timer = setTimeout(() => {
-      fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"ahorros",value:ahorros}) });
+    const timer = setTimeout(async () => {
+      try {
+        await fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"ahorros",value:ahorros}) });
+        showSync("☁ Guardado");
+      } catch(e) { console.log("Save ahorros error:", e); }
     }, 1500);
     return () => clearTimeout(timer);
   }, [ahorros, session?.token]);
@@ -315,6 +321,7 @@ export default function App() {
             </button>
           ))}
         </div>
+        <Suspense fallback={<div className="pb-12 flex items-center justify-center py-20"><span className="text-slate-500 text-sm">Cargando…</span></div>}>
         <div key={tab} className="pb-12 tab-content">
           {tab==="upload"     && <UploadTab salaries={salaries} onAnalysis={handleAnalysis} rawText={rawText} setRawText={setRawText}/>}
           {tab==="analysis"   && <AnalysisTab analysis={analysis} budget={budget} setBudget={setBudget}/>}
@@ -324,6 +331,7 @@ export default function App() {
           {tab==="ahorros"    && <AhorrosTab ahorros={ahorros} setAhorros={setAhorros}/>}
           {tab==="projection" && <ProjectionTab salaries={salaries} analysis={analysis} periods={periods} creditos={creditos} ahorros={ahorros}/>}
         </div>
+        </Suspense>
       </div>
     </div>
   );

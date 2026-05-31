@@ -24,7 +24,7 @@ export default function AhorroCard({ a, onAbonar, onEdit, onDelete }) {
         </div>
         <div className="flex gap-2">
           <button onClick={() => onEdit(a)} className="text-xs text-slate-500 hover:text-slate-300">✏️</button>
-          <button onClick={() => onDelete(a.id)} className="text-xs text-slate-500 hover:text-rose-400">✕</button>
+          <button onClick={() => { if(window.confirm(`¿Eliminar la meta "${a.nombre}"?`)) onDelete(a.id); }} className="text-xs text-slate-500 hover:text-rose-400">✕</button>
         </div>
       </div>
 
