@@ -6,9 +6,11 @@ import { parsePayslipAI } from "../ai/parsePayslip.js";
 import { Card, KpiCard, CustomTooltip, DropZone } from "../components/ui.jsx";
 import { fmt } from "../utils.js";
 import { MONTHS_ES } from "../constants.js";
+import { useApp } from "../AppContext.jsx";
 
 /* ── SALARY TAB ──────────────────────────────────────────────────────── */
-export default function SalaryTab({ salaries, setSalaries }) {
+export default function SalaryTab() {
+  const { salaries, setSalaries } = useApp();
   const now = new Date();
   const [mode,     setMode]     = useState("manual"); // "manual" | "pdf"
   const [month,    setMonth]    = useState(now.getMonth()+1);

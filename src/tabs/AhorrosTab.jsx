@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Card, KpiCard } from "../components/ui.jsx";
 import AhorroCard from "../components/AhorroCard.jsx";
 import { fmt } from "../utils.js";
+import { useApp } from "../AppContext.jsx";
 
 /* ══════════════════════════════════════════════════════════════════════
    AHORROS TAB
 ══════════════════════════════════════════════════════════════════════ */
-export default function AhorrosTab({ ahorros, setAhorros }) {
+export default function AhorrosTab() {
+  const { ahorros, setAhorros } = useApp();
   const [nombre,    setNombre]    = useState("");
   const [objetivo,  setObjetivo]  = useState("");
   const [actual,    setActual]    = useState("");

@@ -4,9 +4,11 @@ import { projectHouseAI } from "../ai/projectHouse.js";
 import { Card, KpiCard, CustomTooltip } from "../components/ui.jsx";
 import { fmt } from "../utils.js";
 import { CAT_COLORS, PALETTE } from "../constants.js";
+import { useApp } from "../AppContext.jsx";
 
 /* ── PROJECTION TAB ──────────────────────────────────────────────────── */
-export default function ProjectionTab({ salaries, analysis, periods, creditos, ahorros }) {
+export default function ProjectionTab() {
+  const { salaries, analysis, periods, creditos, ahorros } = useApp();
   const [houseMonthly, setHouseMonthly] = useState("");
   const [currentRent,  setCurrentRent]  = useState("");
   const [extraIncome,  setExtraIncome]  = useState("");

@@ -27,6 +27,10 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 2px; }
 
+/* Hide scrollbar on tab nav */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* ─── Header animated gradient ───────────────────────────────────────────── */
 @keyframes gradientShift {
   0%   { background-position: 0% 50%; }

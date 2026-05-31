@@ -3,9 +3,11 @@ import { sanitizeInput, validateFile } from "../security.js";
 import { extractPdfText } from "../utils.js";
 import { analyzeExpensesAI } from "../ai/analyzeExpenses.js";
 import { Card, DropZone, RateLimitBadge } from "../components/ui.jsx";
+import { useApp } from "../AppContext.jsx";
 
 /* ── UPLOAD TAB ──────────────────────────────────────────────────────── */
-export default function UploadTab({ salaries, onAnalysis, rawText, setRawText }) {
+export default function UploadTab() {
+  const { salaries, handleAnalysis: onAnalysis, rawText, setRawText } = useApp();
   const [fileName, setFileName] = useState("");
   const [loading,  setLoading]  = useState(false);
   const [progress, setProgress] = useState("");

@@ -1,4 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useMemo } from "react";
+import { AppContext } from "./AppContext.jsx";
 import { loadSession, clearSession, savePeriods, saveSalaries } from "./security.js";
 import { DEMO_MODE, MONTHS_ES } from "./constants.js";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -250,7 +251,21 @@ export default function App() {
     { id:"projection", label:"🏠 Casa" },
   ];
 
+  const ctx = useMemo(() => ({
+    session, tab, setTab,
+    salaries, setSalaries,
+    analysis, setAnalysis,
+    rawText, setRawText,
+    periods, setPeriods,
+    creditos, setCreditos,
+    ahorros, setAhorros,
+    budget, setBudget,
+    syncing, syncMsg, isOffline,
+    handleAnalysis, handleRemovePeriod, handleLogout,
+  }), [session, tab, salaries, analysis, rawText, periods, creditos, ahorros, budget, syncing, syncMsg, isOffline]);
+
   return (
+    <AppContext.Provider value={ctx}>
     <div className="min-h-screen text-white"
       style={{
         background:"radial-gradient(ellipse 80% 60% at 50% -20%, #1a0a2e 0%, #0f0f1a 55%, #07071a 100%)",
@@ -312,10 +327,10 @@ export default function App() {
       </div>
 
       <div className="px-8 max-w-4xl mx-auto">
-        <div className="grid grid-cols-7 gap-1 rounded-2xl p-1.5 mb-6" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.35)",boxShadow:"0 4px 20px rgba(124,58,237,0.12)"}}>
+        <div className="flex gap-1 rounded-2xl p-1.5 mb-6 overflow-x-auto scrollbar-none" style={{background:"#1a1a2e",border:"1px solid rgba(124,58,237,0.35)",boxShadow:"0 4px 20px rgba(124,58,237,0.12)"}}>
           {tabs.map((t)=>(
             <button key={t.id} onClick={()=>setTab(t.id)}
-              className={`py-2 px-1 rounded-xl text-xs font-medium transition-all text-center ${tab===t.id?"text-white":"text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+              className={`py-2 px-3 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${tab===t.id?"text-white":"text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
               style={tab===t.id?{background:"linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%)",boxShadow:"0 2px 14px rgba(124,58,237,0.45)"}:{}}>
               {t.label}
             </button>
@@ -323,16 +338,17 @@ export default function App() {
         </div>
         <Suspense fallback={<div className="pb-12 flex items-center justify-center py-20"><span className="text-slate-500 text-sm">Cargando…</span></div>}>
         <div key={tab} className="pb-12 tab-content">
-          {tab==="upload"     && <UploadTab salaries={salaries} onAnalysis={handleAnalysis} rawText={rawText} setRawText={setRawText}/>}
-          {tab==="analysis"   && <AnalysisTab analysis={analysis} budget={budget} setBudget={setBudget}/>}
-          {tab==="multi"      && <MultiAnalysisTab periods={periods} salaries={salaries} onRemove={handleRemovePeriod}/>}
-          {tab==="salary"     && <SalaryTab salaries={salaries} setSalaries={setSalaries}/>}
-          {tab==="creditos"   && <CreditosTab creditos={creditos} setCreditos={setCreditos}/>}
-          {tab==="ahorros"    && <AhorrosTab ahorros={ahorros} setAhorros={setAhorros}/>}
-          {tab==="projection" && <ProjectionTab salaries={salaries} analysis={analysis} periods={periods} creditos={creditos} ahorros={ahorros}/>}
+          {tab==="upload"     && <UploadTab/>}
+          {tab==="analysis"   && <AnalysisTab/>}
+          {tab==="multi"      && <MultiAnalysisTab/>}
+          {tab==="salary"     && <SalaryTab/>}
+          {tab==="creditos"   && <CreditosTab/>}
+          {tab==="ahorros"    && <AhorrosTab/>}
+          {tab==="projection" && <ProjectionTab/>}
         </div>
         </Suspense>
       </div>
     </div>
+    </AppContext.Provider>
   );
 }

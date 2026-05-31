@@ -3,9 +3,11 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { Card, KpiCard, CustomTooltip } from "../components/ui.jsx";
 import { fmt } from "../utils.js";
 import { CAT_COLORS, PALETTE } from "../constants.js";
+import { useApp } from "../AppContext.jsx";
 
 /* ── ANALYSIS TAB ────────────────────────────────────────────────────── */
-export default function AnalysisTab({ analysis, budget, setBudget }) {
+export default function AnalysisTab() {
+  const { analysis, budget, setBudget } = useApp();
   if (!analysis) {
     return (
       <Card className="text-center py-20">
@@ -19,6 +21,8 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
   const [editBudget, setEditBudget] = useState({});
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
+  const [catOverrides, setCatOverrides] = useState({});
+  const ALL_CATS = ["Alimentación","Transporte","Entretenimiento","Salud","Ropa/Calzado","Hogar","Tecnología","Viajes","Servicios","Educación","Otros"];
 
   const catMap = {};
   expenses.forEach((e) => { catMap[e.category] = (catMap[e.category]||0) + e.amount; });
@@ -208,18 +212,25 @@ export default function AnalysisTab({ analysis, budget, setBudget }) {
           </div>
         </div>
         <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
-          {expensesFiltradas.slice().sort((a,b)=>b.amount-a.amount).map((e,i)=>(
+          {expensesFiltradas.slice().sort((a,b)=>b.amount-a.amount).map((e,i)=>{
+            const cat = catOverrides[i] || e.category;
+            return (
             <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background:CAT_COLORS[e.category]||"#94a3b8"}}/>
+                <span className="w-2 h-2 rounded-full shrink-0" style={{background:CAT_COLORS[cat]||"#94a3b8"}}/>
                 <span className="text-sm text-slate-300 truncate">{e.desc}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-2">
-                <span className="text-xs text-slate-500 hidden sm:inline">{e.category}</span>
+                <select value={cat} onChange={ev=>setCatOverrides(prev=>({...prev,[i]:ev.target.value}))}
+                  className="hidden sm:block text-xs bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-violet-600 cursor-pointer"
+                  style={{color:CAT_COLORS[cat]||"#94a3b8"}}>
+                  {ALL_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
                 <span className="text-sm font-mono text-slate-200">{fmt(e.amount)}</span>
               </div>
             </div>
-          ))}
+            );
+          })}
           {expensesFiltradas.length === 0 && (
             <p className="text-slate-500 text-sm text-center py-4">Sin resultados</p>
           )}

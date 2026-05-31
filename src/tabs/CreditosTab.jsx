@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Card, KpiCard } from "../components/ui.jsx";
 import { fmt } from "../utils.js";
 import { MONTHS_ES } from "../constants.js";
+import { useApp } from "../AppContext.jsx";
 
 /* ══════════════════════════════════════════════════════════════════════
    CRÉDITOS TAB
 ══════════════════════════════════════════════════════════════════════ */
-export default function CreditosTab({ creditos, setCreditos }) {
+export default function CreditosTab() {
+  const { creditos, setCreditos } = useApp();
   const now = new Date();
   const [nombre,    setNombre]    = useState("");
   const [montoTotal,setMontoTotal]= useState("");

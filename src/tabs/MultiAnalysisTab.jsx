@@ -5,11 +5,13 @@ import { Card, KpiCard, CustomTooltip } from "../components/ui.jsx";
 import ResumenComparativo from "../components/ResumenComparativo.jsx";
 import { fmt, normalizePM } from "../utils.js";
 import { CAT_COLORS, PALETTE, MONTHS_ES } from "../constants.js";
+import { useApp } from "../AppContext.jsx";
 
 /* ══════════════════════════════════════════════════════════════════════
    MULTI-PERIOD ANALYSIS TAB
 ══════════════════════════════════════════════════════════════════════ */
-export default function MultiAnalysisTab({ periods, salaries, onRemove }) {
+export default function MultiAnalysisTab() {
+  const { periods, salaries, handleRemovePeriod: onRemove } = useApp();
   const [view,      setView]      = useState("combined"); // "combined" | "compare" | "ai"
   const [aiResult,  setAiResult]  = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
