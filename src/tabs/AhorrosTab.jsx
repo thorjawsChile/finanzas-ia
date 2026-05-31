@@ -110,9 +110,11 @@ export default function AhorrosTab({ ahorros, setAhorros }) {
 
       {/* KPIs */}
       {ahorros.length > 0 && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard label="Total ahorrado"  value={fmt(totalAhorrado)} accent="emerald"/>
           <KpiCard label="Total objetivo"  value={fmt(totalObjetivo)} accent="sky"/>
+          <KpiCard label="Metas activas"   value={ahorros.length}     accent="violet"/>
+          <KpiCard label="% completado"    value={totalObjetivo > 0 ? Math.round((totalAhorrado/totalObjetivo)*100) + "%" : "0%"} accent="amber"/>
         </div>
       )}
 
