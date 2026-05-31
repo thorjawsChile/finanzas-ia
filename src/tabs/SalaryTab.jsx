@@ -258,12 +258,12 @@ export default function SalaryTab({ salaries, setSalaries }) {
             <KpiCard label="Último Sueldo"   value={fmt(latestSalary)} accent="emerald"/>
             <KpiCard label="Sueldo Promedio" value={fmt(avgSalary)}    accent="amber"/>
           </div>
-          {salaries.length === 1 && (
+          {chartData.length <= 1 && salaries.length > 0 && (
             <p className="text-slate-500 text-sm text-center py-4">
               Agrega un sueldo más para ver la evolución en el tiempo.
             </p>
           )}
-          {salaries.length > 1 && (
+          {chartData.length > 1 && (
             <Card>
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-4">Evolución de Sueldos</h3>
               <ResponsiveContainer width="100%" height={180}>
