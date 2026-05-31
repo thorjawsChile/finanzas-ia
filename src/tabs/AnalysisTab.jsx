@@ -7,7 +7,7 @@ import { useApp } from "../AppContext.jsx";
 
 /* ── ANALYSIS TAB ────────────────────────────────────────────────────── */
 export default function AnalysisTab() {
-  const { analysis, budget, setBudget, gastosManuales, setGastosManuales } = useApp();
+  const { analysis, setAnalysis, budget, setBudget, gastosManuales, setGastosManuales, periods, setPeriods } = useApp();
 
   const [showBudget,       setShowBudget]       = useState(false);
   const [editBudget,       setEditBudget]       = useState({});
@@ -23,7 +23,26 @@ export default function AnalysisTab() {
   const handleAddGasto = () => {
     const amount = parseFloat(String(gAmount).replace(/\./g,"").replace(",","."));
     if (!gDesc.trim() || !amount || amount <= 0) return;
-    setGastosManuales(prev => [...prev, { id: Date.now(), desc: gDesc.trim(), amount, category: gCat, manual: true }]);
+    const newGasto = { id: Date.now(), desc: gDesc.trim(), amount, category: gCat, manual: true };
+    // 1. Lista de gastos manuales (para persistencia separada)
+    setGastosManuales(prev => [...prev, newGasto]);
+    // 2. Inyectar en analysis actual (lo que ve AnalysisTab)
+    setAnalysis(prev => prev ? ({
+      ...prev,
+      expenses: [...(prev.expenses||[]), newGasto],
+      totalExpenses: (prev.totalExpenses||0) + amount,
+    }) : prev);
+    // 3. Inyectar en el último período guardado (lo que ve Períodos)
+    setPeriods(prev => {
+      if (prev.length === 0) return prev;
+      const last = { ...prev[prev.length - 1] };
+      last.analysis = {
+        ...last.analysis,
+        expenses: [...(last.analysis?.expenses||[]), newGasto],
+        totalExpenses: (last.analysis?.totalExpenses||0) + amount,
+      };
+      return [...prev.slice(0, -1), last];
+    });
     setGDesc(""); setGAmount(""); setGCat("Hipotecario/Arriendo"); setShowGastoForm(false);
   };
 
@@ -37,13 +56,12 @@ export default function AnalysisTab() {
   }
   const { expenses=[], totalExpenses=0, summary="", topCategories=[], recommendations=[], salaryRatio } = analysis;
 
-  const allExpenses = [...expenses, ...gastosManuales];
   const catMap = {};
   expenses.forEach((e) => { catMap[e.category] = (catMap[e.category]||0) + e.amount; });
   const pieData = Object.entries(catMap).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   const avgExpense = expenses.length > 0 ? totalExpenses / expenses.length : 0;
-  const categorias = ["Todas", ...Array.from(new Set(allExpenses.map(e => e.category))).sort()];
-  const expensesFiltradas = allExpenses
+  const categorias = ["Todas", ...Array.from(new Set(expenses.map(e => e.category))).sort()];
+  const expensesFiltradas = expenses
     .filter(e => filtroCategoria === "Todas" || e.category === filtroCategoria)
     .filter(e => e.desc.toLowerCase().includes(busqueda.toLowerCase()));
 
@@ -265,8 +283,17 @@ export default function AnalysisTab() {
                 )}
                 <span className="text-sm font-mono text-slate-200">{fmt(e.amount)}</span>
                 {e.manual && (
-                  <button onClick={()=>{ if(window.confirm(`¿Eliminar "${e.desc}"?`)) setGastosManuales(prev=>prev.filter(g=>g.id!==e.id)); }}
-                    className="text-slate-600 hover:text-rose-400 transition-colors text-xs">✕</button>
+                  <button onClick={()=>{
+                    if(!window.confirm(`¿Eliminar "${e.desc}"?`)) return;
+                    setGastosManuales(prev=>prev.filter(g=>g.id!==e.id));
+                    setAnalysis(prev=>prev?({...prev,expenses:(prev.expenses||[]).filter(g=>g.id!==e.id),totalExpenses:(prev.totalExpenses||0)-e.amount}):prev);
+                    setPeriods(prev=>{
+                      if(prev.length===0) return prev;
+                      const last={...prev[prev.length-1]};
+                      last.analysis={...last.analysis,expenses:(last.analysis?.expenses||[]).filter(g=>g.id!==e.id),totalExpenses:(last.analysis?.totalExpenses||0)-e.amount};
+                      return [...prev.slice(0,-1),last];
+                    });
+                  }} className="text-slate-600 hover:text-rose-400 transition-colors text-xs">✕</button>
                 )}
               </div>
             </div>
