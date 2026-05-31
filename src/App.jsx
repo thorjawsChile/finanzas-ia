@@ -24,6 +24,7 @@ export default function App() {
   const [periods,   setPeriods]  = useState([]);
   const [creditos,  setCreditos] = useState([]);
   const [ahorros,   setAhorros]  = useState([]);
+  const [gastosManuales, setGastosManuales] = useState([]);
   const [budget,    setBudget]   = useState({});
   const [syncing,   setSyncing]  = useState(false);
   const [syncMsg,   setSyncMsg]  = useState("");
@@ -47,6 +48,10 @@ export default function App() {
     if (savedAhorros?.length)  { setAhorros(savedAhorros);  cacheWrite("ahorros",  savedAhorros);  }
   };
 
+  const applyGastosManuales = (gm) => {
+    if (gm?.length) { setGastosManuales(gm); cacheWrite("gastosManuales", gm); }
+  };
+
   const loadOfflineCache = () => {
     const offPeriods  = cacheRead("periods");
     const offSalaries = cacheRead("salaries");
@@ -58,6 +63,8 @@ export default function App() {
     if (offCreditos?.length) setCreditos(offCreditos);
     if (offAhorros?.length)  setAhorros(offAhorros);
     if (offBudget && Object.keys(offBudget).length) setBudget(offBudget);
+    const offGM = cacheRead("gastosManuales");
+    if (offGM?.length) setGastosManuales(offGM);
     return !!(offPeriods?.length || offSalaries?.length);
   };
 
@@ -70,13 +77,15 @@ export default function App() {
       Promise.all([
         fetch(`/api/data?key=periods`,  { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
         fetch(`/api/data?key=salaries`, { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
-        fetch(`/api/data?key=creditos`, { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
-        fetch(`/api/data?key=ahorros`,  { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
-        fetch(`/api/data?key=budget`,   { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
-      ]).then(([p, s, c, a, b]) => {
+        fetch(`/api/data?key=creditos`,      { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=ahorros`,       { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=budget`,        { headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+        fetch(`/api/data?key=gastosManuales`,{ headers: { "x-session-token": token } }).then(r=>r.json()).then(d=>d.value),
+      ]).then(([p, s, c, a, b, gm]) => {
         setIsOffline(false);
         applyCloudData(p, s, c, a);
         if (b && Object.keys(b).length) { setBudget(b); cacheWrite("budget", b); }
+        applyGastosManuales(gm);
         showSync("☁ Datos cargados");
       }).catch(e => { console.log("Login load error:", e); setIsOffline(true); showSync("📱 Modo offline"); })
         .finally(() => setSyncing(false));
@@ -99,13 +108,15 @@ export default function App() {
     Promise.all([
       fetch(`/api/data?key=periods`,  { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
       fetch(`/api/data?key=salaries`, { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
-      fetch(`/api/data?key=creditos`, { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
-      fetch(`/api/data?key=ahorros`,  { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
-      fetch(`/api/data?key=budget`,   { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
-    ]).then(([p, s, c, a, b]) => {
+      fetch(`/api/data?key=creditos`,       { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=ahorros`,        { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=budget`,         { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+      fetch(`/api/data?key=gastosManuales`, { headers: { "x-session-token": tok } }).then(r=>r.json()).then(d=>d.value),
+    ]).then(([p, s, c, a, b, gm]) => {
       setIsOffline(false);
       applyCloudData(p, s, c, a);
       if (b && Object.keys(b).length) { setBudget(b); cacheWrite("budget", b); }
+      applyGastosManuales(gm);
       showSync("☁ Datos cargados");
     }).catch(e => {
       console.log("Mount load error:", e);
@@ -166,6 +177,20 @@ export default function App() {
     }, 1500);
     return () => clearTimeout(timer);
   }, [ahorros, session?.token]);
+
+  // ── Auto-save gastosManuales ──────────────────────────────────────────────
+  useEffect(() => {
+    cacheWrite("gastosManuales", gastosManuales);
+    if (!session?.token || gastosManuales.length === 0) return;
+    const tok = session.token;
+    const timer = setTimeout(async () => {
+      try {
+        await fetch("/api/data", { method:"POST", headers:{"Content-Type":"application/json","x-session-token":tok}, body: JSON.stringify({key:"gastosManuales",value:gastosManuales}) });
+        showSync("☁ Guardado");
+      } catch(e) { console.log("Save gastosManuales error:", e); }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [gastosManuales, session?.token]);
 
   // ── Auto-save budget ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -240,9 +265,10 @@ export default function App() {
     creditos, setCreditos,
     ahorros, setAhorros,
     budget, setBudget,
+    gastosManuales, setGastosManuales,
     syncing, syncMsg, isOffline,
     handleAnalysis, handleRemovePeriod, handleLogout,
-  }), [session, tab, salaries, analysis, rawText, periods, creditos, ahorros, budget, syncing, syncMsg, isOffline]);
+  }), [session, tab, salaries, analysis, rawText, periods, creditos, ahorros, budget, gastosManuales, syncing, syncMsg, isOffline]);
 
   // Demo mode: skip login entirely
   if (DEMO_MODE && !session) {

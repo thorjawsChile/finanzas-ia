@@ -7,7 +7,26 @@ import { useApp } from "../AppContext.jsx";
 
 /* ── ANALYSIS TAB ────────────────────────────────────────────────────── */
 export default function AnalysisTab() {
-  const { analysis, budget, setBudget } = useApp();
+  const { analysis, budget, setBudget, gastosManuales, setGastosManuales } = useApp();
+
+  const [showBudget,       setShowBudget]       = useState(false);
+  const [editBudget,       setEditBudget]       = useState({});
+  const [filtroCategoria,  setFiltroCategoria]  = useState("Todas");
+  const [busqueda,         setBusqueda]         = useState("");
+  const [catOverrides,     setCatOverrides]     = useState({});
+  const [showGastoForm,    setShowGastoForm]    = useState(false);
+  const [gDesc,            setGDesc]            = useState("");
+  const [gAmount,          setGAmount]          = useState("");
+  const [gCat,             setGCat]             = useState("Hipotecario/Arriendo");
+  const ALL_CATS = ["Alimentación","Transporte","Entretenimiento","Salud","Ropa/Calzado","Hogar","Tecnología","Viajes","Servicios","Educación","Hipotecario/Arriendo","Efectivo","Otros"];
+
+  const handleAddGasto = () => {
+    const amount = parseFloat(String(gAmount).replace(/\./g,"").replace(",","."));
+    if (!gDesc.trim() || !amount || amount <= 0) return;
+    setGastosManuales(prev => [...prev, { id: Date.now(), desc: gDesc.trim(), amount, category: gCat, manual: true }]);
+    setGDesc(""); setGAmount(""); setGCat("Hipotecario/Arriendo"); setShowGastoForm(false);
+  };
+
   if (!analysis) {
     return (
       <Card className="text-center py-20">
@@ -17,19 +36,14 @@ export default function AnalysisTab() {
     );
   }
   const { expenses=[], totalExpenses=0, summary="", topCategories=[], recommendations=[], salaryRatio } = analysis;
-  const [showBudget, setShowBudget] = useState(false);
-  const [editBudget, setEditBudget] = useState({});
-  const [filtroCategoria, setFiltroCategoria] = useState("Todas");
-  const [busqueda, setBusqueda] = useState("");
-  const [catOverrides, setCatOverrides] = useState({});
-  const ALL_CATS = ["Alimentación","Transporte","Entretenimiento","Salud","Ropa/Calzado","Hogar","Tecnología","Viajes","Servicios","Educación","Otros"];
 
+  const allExpenses = [...expenses, ...gastosManuales];
   const catMap = {};
   expenses.forEach((e) => { catMap[e.category] = (catMap[e.category]||0) + e.amount; });
   const pieData = Object.entries(catMap).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
   const avgExpense = expenses.length > 0 ? totalExpenses / expenses.length : 0;
-  const categorias = ["Todas", ...Array.from(new Set(expenses.map(e => e.category))).sort()];
-  const expensesFiltradas = expenses
+  const categorias = ["Todas", ...Array.from(new Set(allExpenses.map(e => e.category))).sort()];
+  const expensesFiltradas = allExpenses
     .filter(e => filtroCategoria === "Todas" || e.category === filtroCategoria)
     .filter(e => e.desc.toLowerCase().includes(busqueda.toLowerCase()));
 
@@ -193,40 +207,67 @@ export default function AnalysisTab() {
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h3 className="text-slate-300 text-sm font-semibold uppercase tracking-wide">
             Detalle ({expensesFiltradas.length})
+            {gastosManuales.length > 0 && <span className="ml-2 text-xs font-normal text-violet-400">+{gastosManuales.length} manual{gastosManuales.length>1?"es":""}</span>}
           </h3>
           <div className="flex gap-2 flex-wrap">
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              className="bg-slate-800 text-slate-300 text-xs rounded-lg px-3 py-1.5 border border-slate-700 focus:outline-none focus:border-purple-500 w-36"
-            />
-            <select
-              value={filtroCategoria}
-              onChange={e => setFiltroCategoria(e.target.value)}
-              className="bg-slate-800 text-slate-300 text-xs rounded-lg px-3 py-1.5 border border-slate-700 focus:outline-none focus:border-purple-500"
-            >
-              {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+            <input type="text" placeholder="Buscar..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}
+              className="bg-slate-800 text-slate-300 text-xs rounded-lg px-3 py-1.5 border border-slate-700 focus:outline-none focus:border-purple-500 w-36"/>
+            <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)}
+              className="bg-slate-800 text-slate-300 text-xs rounded-lg px-3 py-1.5 border border-slate-700 focus:outline-none focus:border-purple-500">
+              {categorias.map(c=><option key={c} value={c}>{c}</option>)}
             </select>
+            <button onClick={()=>setShowGastoForm(v=>!v)}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+              style={{background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.35)",color:"#c4b5fd"}}>
+              {showGastoForm ? "✕ Cancelar" : "＋ Agregar gasto"}
+            </button>
           </div>
         </div>
+
+        {showGastoForm && (
+          <div className="mb-3 p-3 rounded-xl space-y-2" style={{background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.25)"}}>
+            <p className="text-xs text-violet-400 font-medium uppercase tracking-widest">Nuevo gasto manual</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input value={gDesc} onChange={e=>setGDesc(e.target.value)} placeholder="Descripción (ej: Arriendo)"
+                className="col-span-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-600"/>
+              <input value={gAmount} onChange={e=>setGAmount(e.target.value)} placeholder="Monto ($)"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-violet-600"/>
+              <select value={gCat} onChange={e=>setGCat(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-violet-600">
+                {ALL_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <button onClick={handleAddGasto} disabled={!gDesc.trim()||!gAmount}
+              className="w-full py-2 rounded-lg text-xs font-semibold text-white transition-all"
+              style={{background:"linear-gradient(135deg,#7c3aed,#06b6d4)",opacity:(!gDesc.trim()||!gAmount)?0.45:1}}>
+              Agregar gasto
+            </button>
+          </div>
+        )}
+
         <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
           {expensesFiltradas.slice().sort((a,b)=>b.amount-a.amount).map((e,i)=>{
             const cat = catOverrides[i] || e.category;
             return (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
+            <div key={e.id||i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{background:CAT_COLORS[cat]||"#94a3b8"}}/>
                 <span className="text-sm text-slate-300 truncate">{e.desc}</span>
+                {e.manual && <span className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{background:"rgba(124,58,237,0.2)",color:"#c4b5fd"}}>manual</span>}
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-2">
-                <select value={cat} onChange={ev=>setCatOverrides(prev=>({...prev,[i]:ev.target.value}))}
-                  className="hidden sm:block text-xs bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-violet-600 cursor-pointer"
-                  style={{color:CAT_COLORS[cat]||"#94a3b8"}}>
-                  {ALL_CATS.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
+                {!e.manual && (
+                  <select value={cat} onChange={ev=>setCatOverrides(prev=>({...prev,[i]:ev.target.value}))}
+                    className="hidden sm:block text-xs bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-violet-600 cursor-pointer"
+                    style={{color:CAT_COLORS[cat]||"#94a3b8"}}>
+                    {ALL_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                )}
                 <span className="text-sm font-mono text-slate-200">{fmt(e.amount)}</span>
+                {e.manual && (
+                  <button onClick={()=>{ if(window.confirm(`¿Eliminar "${e.desc}"?`)) setGastosManuales(prev=>prev.filter(g=>g.id!==e.id)); }}
+                    className="text-slate-600 hover:text-rose-400 transition-colors text-xs">✕</button>
+                )}
               </div>
             </div>
             );
