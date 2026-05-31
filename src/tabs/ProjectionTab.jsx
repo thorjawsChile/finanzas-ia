@@ -79,8 +79,9 @@ export default function ProjectionTab({ salaries, analysis, periods, creditos, a
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:"rgba(6,182,212,0.08)",border:"1px solid rgba(6,182,212,0.2)"}}>
               <span className="text-base shrink-0">📊</span>
               <div>
-                <p className="text-xs text-cyan-400 font-medium">Gastos bancarios{periodsWithData.length > 1 ? ` (${periodsWithData.length} meses)` : ""}</p>
+                <p className="text-xs text-cyan-400 font-medium">Gasto promedio mensual</p>
                 <p className="text-xs text-slate-300 font-mono">{fmt(avgMonthlyExpenses)}/mes</p>
+                <p className="text-xs text-slate-500 mt-0.5">Promedio de {periodsWithData.length} período{periodsWithData.length !== 1 ? "s" : ""} cargado{periodsWithData.length !== 1 ? "s" : ""}</p>
               </div>
             </div>
           ) : (
