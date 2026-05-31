@@ -231,9 +231,21 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  const ctx = useMemo(() => ({
+    session, tab, setTab,
+    salaries, setSalaries,
+    analysis, setAnalysis,
+    rawText, setRawText,
+    periods, setPeriods,
+    creditos, setCreditos,
+    ahorros, setAhorros,
+    budget, setBudget,
+    syncing, syncMsg, isOffline,
+    handleAnalysis, handleRemovePeriod, handleLogout,
+  }), [session, tab, salaries, analysis, rawText, periods, creditos, ahorros, budget, syncing, syncMsg, isOffline]);
+
   // Demo mode: skip login entirely
   if (DEMO_MODE && !session) {
-    // Auto-create a fake session so the app loads directly
     if (typeof window !== "undefined" && !session) {
       setTimeout(() => setSession({ username: "demo" }), 0);
     }
@@ -250,19 +262,6 @@ export default function App() {
     { id:"ahorros",    label:"🎯 Ahorros" },
     { id:"projection", label:"🏠 Casa" },
   ];
-
-  const ctx = useMemo(() => ({
-    session, tab, setTab,
-    salaries, setSalaries,
-    analysis, setAnalysis,
-    rawText, setRawText,
-    periods, setPeriods,
-    creditos, setCreditos,
-    ahorros, setAhorros,
-    budget, setBudget,
-    syncing, syncMsg, isOffline,
-    handleAnalysis, handleRemovePeriod, handleLogout,
-  }), [session, tab, salaries, analysis, rawText, periods, creditos, ahorros, budget, syncing, syncMsg, isOffline]);
 
   return (
     <AppContext.Provider value={ctx}>
